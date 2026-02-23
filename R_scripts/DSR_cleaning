@@ -28,772 +28,1305 @@ library(dendextend)
 library(TSP)
 library(ggrepel)
 
-options(error=NULL)
-setwd("/Users/alexhoward/Documents/Projects/UDAST_code")
+options(error = NULL)
+setwd("/Users/alexhoward/Documents/GitHub/ADAPT-DSR")
 
 ###Read-in and cleaning
 read_in <- function(file_name) {
-  
   file_path <- file.path(path_to_data, file_name)
   df <- fread(file_path)
-  
 }
-micro_clean <- function(file_location,file_name) {
-  
+micro_clean <- function(file_location, file_name) {
   path_to_data <- file_location
-  
+
   read_in <- function(file_name) {
-    
     file_path <- file.path(path_to_data, file_name)
     df <- fread(file_path)
-    
   }
-  
+
   df <- read_in(file_name)
-  
-  df <- df %>% mutate(org_name = str_remove(org_name,"POSITIVE FOR"),#---------------------------------------------------Cleaning
-                      org_name = str_remove(org_name,"PRESUMPTIVELY"),
-                      org_name = str_remove(org_name,"PRESUMPTIVE"),
-                      org_name = str_remove(org_name,"PROBABLE"),
-                      org_name = str_remove(org_name,"IDENTIFICATION"),
-                      org_name = str_remove(org_name,"RESEMBLING"),
-                      org_name = str_remove(org_name,"SEEN"),
-                      org_name = str_remove(org_name,"MODERATE"),
-                      org_name = str_remove(org_name,"FEW"),
-                      org_name = str_remove(org_name,"BETA"),
-                      org_name = str_remove(org_name,"METHICILLIN RESISTANT"),
-                      org_name = str_remove(org_name,"NUTRITIONALLY VARIANT"),
-                      org_name = str_remove(org_name,"NOT C. PERFRINGENS OR C. SEPTICUM"),
-                      org_name = str_remove(org_name,"-LACTAMASE POSITIVE"),
-                      org_name = str_remove(org_name,"-LACTAMASE NEGATIVE"),
-                      org_name = str_remove(org_name,"VIRAL ANTIGEN"),
-                      org_name = str_remove(org_name,"CANDIDA INCONSPICUA"),
-                      org_name = str_remove(org_name,"/POSADASII"),
-                      org_name = str_remove(org_name,"NOT FUMIGATUS, FLAVUS OR NIGER"),
-                      org_name = str_remove(org_name,"MRSA NEGATIVE"),
-                      org_name = str_remove(org_name,"HISTOLYTICA/DISPAR"),
-                      org_name = case_when(grepl("NON-FERMENTER",org_name)~"PSEUDOMONADALES",                     
-                                           TRUE~org_name),
-                      org_name = case_when(grepl("ABIOTROPHIA/GRANULICATELLA",org_name)~"STREPTOCOCCUS",                     
-                                           TRUE~org_name),
-                      org_name = case_when(grepl("S. AUREUS POSITIVE",org_name)~"STAPHYLOCOCCUS AUREUS",                     
-                                           TRUE~org_name),
-                      org_name = case_when(grepl("ASPERGILLUS FUMIGATUS COMPLEX",org_name)~"ASPERGILLUS FUMIGATUS",                     
-                                           TRUE~org_name),
-                      org_name = case_when(grepl("(CRYPTOSPORIDIUM PARVUM OOCYSTS|CUNNINGHAMELLA BERTHOLLETIAE|EPIDERMOPHYTON FLOCCOSUM|EXOPHIALA JEANSELMEI COMPLEX|SCEDOSPORIUM|NEOASCOCHYTA DESMAZIERI|NEOSCYTALIDIUM DIMIDIATUM|LOMENTOSPORA|NEUROSPORA|PERONEUTYPA SCOPARIA|SPOROTHRIX SCHENCKII COMPLEX|ZYGOSACCHAROMYCES FERMENTATI)",org_name)~"UNKNOWN FUNGUS",                     
-                                           TRUE~org_name)
-  ) %>%#-------------------------------------------------------------------------------------------------------------------Removal of AMR package non-interpretable rows
-    filter(!grepl("(CANCELLED|VIRUS|SIMPLEX|PARAINFLUENZA|INFLUENZA A|INFLUENZA B|TICK|AFB GROWN|GRAM VARIABLE RODS|HYMENOLEPIS)",org_name)) %>% 
-    mutate(ab_name=AMR::as.ab(ab_name)) %>%#-------------------------------------------------------------------------------AMR package parsing of antimicrobial and organism names
-    mutate(org_name=AMR::as.mo(org_name)) %>% 
+
+  df <- df %>%
+    mutate(
+      org_name = str_remove(org_name, "POSITIVE FOR"), #---------------------------------------------------Cleaning
+      org_name = str_remove(org_name, "PRESUMPTIVELY"),
+      org_name = str_remove(org_name, "PRESUMPTIVE"),
+      org_name = str_remove(org_name, "PROBABLE"),
+      org_name = str_remove(org_name, "IDENTIFICATION"),
+      org_name = str_remove(org_name, "RESEMBLING"),
+      org_name = str_remove(org_name, "SEEN"),
+      org_name = str_remove(org_name, "MODERATE"),
+      org_name = str_remove(org_name, "FEW"),
+      org_name = str_remove(org_name, "BETA"),
+      org_name = str_remove(org_name, "METHICILLIN RESISTANT"),
+      org_name = str_remove(org_name, "NUTRITIONALLY VARIANT"),
+      org_name = str_remove(org_name, "NOT C. PERFRINGENS OR C. SEPTICUM"),
+      org_name = str_remove(org_name, "-LACTAMASE POSITIVE"),
+      org_name = str_remove(org_name, "-LACTAMASE NEGATIVE"),
+      org_name = str_remove(org_name, "VIRAL ANTIGEN"),
+      org_name = str_remove(org_name, "CANDIDA INCONSPICUA"),
+      org_name = str_remove(org_name, "/POSADASII"),
+      org_name = str_remove(org_name, "NOT FUMIGATUS, FLAVUS OR NIGER"),
+      org_name = str_remove(org_name, "MRSA NEGATIVE"),
+      org_name = str_remove(org_name, "HISTOLYTICA/DISPAR"),
+      org_name = case_when(
+        grepl("NON-FERMENTER", org_name) ~ "PSEUDOMONADALES",
+        TRUE ~ org_name
+      ),
+      org_name = case_when(
+        grepl("ABIOTROPHIA/GRANULICATELLA", org_name) ~ "STREPTOCOCCUS",
+        TRUE ~ org_name
+      ),
+      org_name = case_when(
+        grepl("S. AUREUS POSITIVE", org_name) ~ "STAPHYLOCOCCUS AUREUS",
+        TRUE ~ org_name
+      ),
+      org_name = case_when(
+        grepl(
+          "ASPERGILLUS FUMIGATUS COMPLEX",
+          org_name
+        ) ~ "ASPERGILLUS FUMIGATUS",
+        TRUE ~ org_name
+      ),
+      org_name = case_when(
+        grepl(
+          "(CRYPTOSPORIDIUM PARVUM OOCYSTS|CUNNINGHAMELLA BERTHOLLETIAE|EPIDERMOPHYTON FLOCCOSUM|EXOPHIALA JEANSELMEI COMPLEX|SCEDOSPORIUM|NEOASCOCHYTA DESMAZIERI|NEOSCYTALIDIUM DIMIDIATUM|LOMENTOSPORA|NEUROSPORA|PERONEUTYPA SCOPARIA|SPOROTHRIX SCHENCKII COMPLEX|ZYGOSACCHAROMYCES FERMENTATI)",
+          org_name
+        ) ~ "UNKNOWN FUNGUS",
+        TRUE ~ org_name
+      )
+    ) %>% #-------------------------------------------------------------------------------------------------------------------Removal of AMR package non-interpretable rows
+    filter(
+      !grepl(
+        "(CANCELLED|VIRUS|SIMPLEX|PARAINFLUENZA|INFLUENZA A|INFLUENZA B|TICK|AFB GROWN|GRAM VARIABLE RODS|HYMENOLEPIS)",
+        org_name
+      )
+    ) %>%
+    mutate(ab_name = AMR::as.ab(ab_name)) %>% #-------------------------------------------------------------------------------AMR package parsing of antimicrobial and organism names
+    mutate(org_name = AMR::as.mo(org_name)) %>%
     MIMER::transpose_microbioevents(
-      key_columns = c('subject_id','micro_specimen_id','isolate_num','org_name','ab_itemid','test_name','test_seq'),#------Transpose AST results to columns
-      required_columns =c('subject_id','chartdate',"hadm_id","order_provider_id",
-                          "charttime","micro_specimen_id","spec_itemid","spec_type_desc",
-                          "storedate","storetime","test_itemid","test_name","org_itemid",
-                          "isolate_num","org_name","comments",'test_seq'),
+      key_columns = c(
+        'subject_id',
+        'micro_specimen_id',
+        'isolate_num',
+        'org_name',
+        'ab_itemid',
+        'test_name',
+        'test_seq'
+      ), #------Transpose AST results to columns
+      required_columns = c(
+        'subject_id',
+        'chartdate',
+        "hadm_id",
+        "order_provider_id",
+        "charttime",
+        "micro_specimen_id",
+        "spec_itemid",
+        "spec_type_desc",
+        "storedate",
+        "storetime",
+        "test_itemid",
+        "test_name",
+        "org_itemid",
+        "isolate_num",
+        "org_name",
+        "comments",
+        'test_seq'
+      ),
       transpose_key_column = 'ab_name',
       transpose_value_column = 'interpretation',
       fill = "N/A",
-      non_empty_filter_column='subject_id') %>%
-    add_column(AMX=NA, AMC=NA, TIC=NA,PME=NA, FOS=NA,TMP=NA,#---------------------------------------------------------------Add missing AMR package-recognised antimicrobial agent columns
-               MFX=NA, NOR=NA,CPD = NA, FOX1=NA,TEC=NA,TLV=NA,ORI=NA,
-               TGC=NA,AZM=NA,ATM=NA,CRB=NA,CTX=NA,CPT=NA,SPT=NA,TZD=NA,ERV=NA,OMC=NA,FDX=NA,
-               CZT=NA,LEX=NA,CLR=NA,DAL=NA,CZA=NA,NOV=NA,ETP=NA,
-               MTR=NA,QDA=NA,TEM=NA,COL=NA,CHL=NA,BPR=NA,CEC=NA) %>%
-    mutate(org_fullname = AMR::mo_fullname(org_name),#----------------------------------------------------------------------Additional organism categorisation columns
-           org_kingdom = AMR::mo_kingdom(org_name),
-           org_phylum = AMR::mo_phylum(org_name),
-           org_class = AMR::mo_class(org_name),
-           org_order = AMR::mo_order(org_name),
-           org_family = AMR::mo_family(org_name),
-           org_genus = AMR::mo_genus(org_name),
-           org_species = AMR::mo_species(org_name),
-           org_gram = AMR::mo_gramstain(org_name),
-           org_o2 = AMR::mo_oxygen_tolerance(org_name),
-           org_path = AMR::mo_pathogenicity(org_name),
-           UTI = case_when(grepl("URINE",spec_type_desc)~TRUE,
-                           TRUE~FALSE)) %>%
-    relocate(PEN,OXA,AMP,AMX,PIP,TIC,CRB,PME,SAM,AMC,TZP,TEM,#--------------------------------------------------------------AST column reorganisation
-             ATM,
-             LEX,CZO,CEC,CXM,FOX1,CTX,CRO,CAZ,CPD,FEP,CPT,BPR,CZA,CZT,
-             ETP,MEM,IPM,
-             LVX,MFX,CIP,NOR,
-             GEN,TOB,SPT,
-             TMP,SXT,
-             COL,NIT,FOS,NOV,CHL,
-             TGC,ERV,OMC,TCY,
-             ERY,CLR,AZM,CLI,QDA,
-             LNZ,TZD,TEC,VAN,DAL,TLV,ORI,DAP,RIF,
-             FDX,MTR,
-             .before = "AMK"
-    ) %>% relocate(AMK,.after = "GEN") %>% 
-    mutate_at(vars(PEN:MTR),as.sir)
-  
-  df %>% mutate(#----------------------------------------------------------------------------------------------------------Addition of breakpoint interpretation and UTI columns
-    guideline=rep("Original CLSI",nrow(df)),
-    urine_interp = case_when(spec_type_desc=="URINE" &
-                               !is.na(org_name) &
-                               (org_path=="Potentially pathogenic" |
-                                  grepl("(discontinued|MIXED)",comments))~ "Possible UTI",
-                             spec_type_desc=="URINE" &
-                               !is.na(org_name) &
-                               org_path=="Pathogenic" &
-                               comments=="" ~ "Probable UTI",
-                             TRUE ~ "Unlikely UTI"),
-    AMPC=case_when(grepl("Citrobacter braakii",org_fullname) |#-----------------------------------------------------------Addition of chromosomal AmpC column
-                     grepl("Citrobacter freundii",org_fullname) |
-                     grepl("Citrobacter gillenii",org_fullname) |
-                     grepl("Citrobacter murliniae",org_fullname) |
-                     grepl("Citrobacter rodenticum",org_fullname) |
-                     grepl("Citrobacter sedlakii",org_fullname) |
-                     grepl("Citrobacter werkmanii",org_fullname) |
-                     grepl("Citrobacter youngae",org_fullname) |
-                     grepl("Enterobacter",org_fullname) |
-                     grepl("Hafnia alvei",org_fullname) |
-                     grepl("Klebsiella aerogenes",org_fullname) |
-                     grepl("Morganella morganii",org_fullname) |
-                     grepl("Providencia",org_fullname) |
-                     grepl("Serratia",org_fullname) |
-                     org_order=="Enterobacterales"& (CAZ=="R"|CAZ=="I")&FEP=="S"~"R",
-                   (org_order=="Enterobacterales"& (CAZ=="R" & is.na(FEP))) |
-                     (org_order=="Enterobacterales"& (is.na(CAZ) & FEP=="S" )) ~ NA,
-                   TRUE~"S")
-  ) %>% relocate(comments,.before="guideline")
-  
+      non_empty_filter_column = 'subject_id'
+    ) %>%
+    add_column(
+      AMX = NA,
+      AMC = NA,
+      TIC = NA,
+      PME = NA,
+      FOS = NA,
+      TMP = NA, #---------------------------------------------------------------Add missing AMR package-recognised antimicrobial agent columns
+      MFX = NA,
+      NOR = NA,
+      CPD = NA,
+      FOX1 = NA,
+      TEC = NA,
+      TLV = NA,
+      ORI = NA,
+      TGC = NA,
+      AZM = NA,
+      ATM = NA,
+      CRB = NA,
+      CTX = NA,
+      CPT = NA,
+      SPT = NA,
+      TZD = NA,
+      ERV = NA,
+      OMC = NA,
+      FDX = NA,
+      CZT = NA,
+      LEX = NA,
+      CLR = NA,
+      DAL = NA,
+      CZA = NA,
+      NOV = NA,
+      ETP = NA,
+      MTR = NA,
+      QDA = NA,
+      TEM = NA,
+      COL = NA,
+      CHL = NA,
+      BPR = NA,
+      CEC = NA
+    ) %>%
+    mutate(
+      org_fullname = AMR::mo_fullname(org_name), #----------------------------------------------------------------------Additional organism categorisation columns
+      org_kingdom = AMR::mo_kingdom(org_name),
+      org_phylum = AMR::mo_phylum(org_name),
+      org_class = AMR::mo_class(org_name),
+      org_order = AMR::mo_order(org_name),
+      org_family = AMR::mo_family(org_name),
+      org_genus = AMR::mo_genus(org_name),
+      org_species = AMR::mo_species(org_name),
+      org_gram = AMR::mo_gramstain(org_name),
+      org_o2 = AMR::mo_oxygen_tolerance(org_name),
+      org_path = AMR::mo_pathogenicity(org_name),
+      UTI = case_when(grepl("URINE", spec_type_desc) ~ TRUE, TRUE ~ FALSE)
+    ) %>%
+    relocate(
+      PEN,
+      OXA,
+      AMP,
+      AMX,
+      PIP,
+      TIC,
+      CRB,
+      PME,
+      SAM,
+      AMC,
+      TZP,
+      TEM, #--------------------------------------------------------------AST column reorganisation
+      ATM,
+      LEX,
+      CZO,
+      CEC,
+      CXM,
+      FOX1,
+      CTX,
+      CRO,
+      CAZ,
+      CPD,
+      FEP,
+      CPT,
+      BPR,
+      CZA,
+      CZT,
+      ETP,
+      MEM,
+      IPM,
+      LVX,
+      MFX,
+      CIP,
+      NOR,
+      GEN,
+      TOB,
+      SPT,
+      TMP,
+      SXT,
+      COL,
+      NIT,
+      FOS,
+      NOV,
+      CHL,
+      TGC,
+      ERV,
+      OMC,
+      TCY,
+      ERY,
+      CLR,
+      AZM,
+      CLI,
+      QDA,
+      LNZ,
+      TZD,
+      TEC,
+      VAN,
+      DAL,
+      TLV,
+      ORI,
+      DAP,
+      RIF,
+      FDX,
+      MTR,
+      .before = "AMK"
+    ) %>%
+    relocate(AMK, .after = "GEN") %>%
+    mutate_at(vars(PEN:MTR), as.sir)
+
+  df %>%
+    mutate(
+      #----------------------------------------------------------------------------------------------------------Addition of breakpoint interpretation and UTI columns
+      guideline = rep("Original CLSI", nrow(df)),
+      urine_interp = case_when(
+        spec_type_desc == "URINE" &
+          !is.na(org_name) &
+          (org_path == "Potentially pathogenic" |
+            grepl("(discontinued|MIXED)", comments)) ~ "Possible UTI",
+        spec_type_desc == "URINE" &
+          !is.na(org_name) &
+          org_path == "Pathogenic" &
+          comments == "" ~ "Probable UTI",
+        TRUE ~ "Unlikely UTI"
+      ),
+      AMPC = case_when(
+        grepl("Citrobacter braakii", org_fullname) | #-----------------------------------------------------------Addition of chromosomal AmpC column
+          grepl("Citrobacter freundii", org_fullname) |
+          grepl("Citrobacter gillenii", org_fullname) |
+          grepl("Citrobacter murliniae", org_fullname) |
+          grepl("Citrobacter rodenticum", org_fullname) |
+          grepl("Citrobacter sedlakii", org_fullname) |
+          grepl("Citrobacter werkmanii", org_fullname) |
+          grepl("Citrobacter youngae", org_fullname) |
+          grepl("Enterobacter", org_fullname) |
+          grepl("Hafnia alvei", org_fullname) |
+          grepl("Klebsiella aerogenes", org_fullname) |
+          grepl("Morganella morganii", org_fullname) |
+          grepl("Providencia", org_fullname) |
+          grepl("Serratia", org_fullname) |
+          org_order == "Enterobacterales" &
+            (CAZ == "R" | CAZ == "I") &
+            FEP == "S" ~ "R",
+        (org_order == "Enterobacterales" & (CAZ == "R" & is.na(FEP))) |
+          (org_order == "Enterobacterales" & (is.na(CAZ) & FEP == "S")) ~ NA,
+        TRUE ~ "S"
+      )
+    ) %>%
+    relocate(comments, .before = "guideline")
 }
-prescriptions_clean <- function(file_location,file_name) {
-  
+prescriptions_clean <- function(file_location, file_name) {
   path_to_data <- file_location
-  
+
   read_in <- function(file_name) {
-    
     file_path <- file.path(path_to_data, file_name)
     df <- fread(file_path)
-    
   }
-  
+
   df <- read_in(file_name)
-  
+
   df <- df %>%
-    MIMER::clean_antibiotics(df,drug_col=drug)
-  
+    MIMER::clean_antibiotics(df, drug_col = drug)
 }
 
 ###Intrinsic resistance population
 intr_mic <- function(df) {
-  
-  x <- custom_eucast_rules(genus=="Enterococcus"~cephalosporins=="R",#----------------------------------------------Add custom rules
-                           genus=="Enterococcus"~aminoglycosides=="R",
-                           genus=="Enterococcus"~macrolides=="R",
-                           genus=="Enterococcus"~lincosamides=="R",
-                           fullname=="Enterococcus faecium"~carbapenems=="R",
-                           genus=="Enterococcus"&AMP=="R"~SAM=="R",
-                           genus=="Staphylococcus"&OXA=="S"~AMC=="S",
-                           genus=="Staphylococcus"&OXA=="S"~SAM=="S",
-                           genus=="Staphylococcus"&OXA=="S"~TZP=="S",
-                           genus=="Staphylococcus"&OXA=="S"~AMC=="S",
-                           genus=="Staphylococcus"&OXA=="S"~cephalosporins=="S",
-                           genus=="Staphylococcus"&OXA=="S"~carbapenems=="S",
-                           genus=="Staphylococcus"~CAZ=="R",
-                           genus=="Staphylococcus"&OXA=="R"~AMC=="R",
-                           genus=="Staphylococcus"&OXA=="R"~SAM=="R",
-                           genus=="Staphylococcus"&OXA=="R"~TZP=="R",
-                           genus=="Staphylococcus"&OXA=="R"~AMC=="R",
-                           genus=="Staphylococcus"&OXA=="R"~cephalosporins_1st=="R",
-                           genus=="Staphylococcus"&OXA=="R"~cephalosporins_2nd=="R",
-                           genus=="Staphylococcus"&OXA=="R"~cephalosporins_3rd=="R",
-                           genus=="Staphylococcus"&OXA=="R"~cephalosporins_4th=="R",
-                           genus=="Staphylococcus"&OXA=="R"~carbapenems=="R",
-                           genus=="Staphylococcus"&PEN=="S"~aminopenicillins=="S",
-                           genus=="Staphylococcus"&PEN=="R"~aminopenicillins=="R",
-                           genus=="Streptococcus"&PEN=="S"~aminopenicillins=="S",
-                           genus=="Streptococcus"&PEN=="S"~ureidopenicillins=="S",
-                           genus=="Streptococcus"&PEN=="S"~cephalosporins_except_caz=="S",
-                           kingdom=="Fungi"~aminoglycosides=="R",
-                           kingdom=="Fungi"~antimycobacterials=="R",
-                           kingdom=="Fungi"~betalactams=="R",
-                           kingdom=="Fungi"~quinolones=="R",
-                           kingdom=="Fungi"~lincosamides=="R",
-                           kingdom=="Fungi"~macrolides=="R",
-                           kingdom=="Fungi"~oxazolidinones=="R",
-                           kingdom=="Fungi"~polymyxins=="R",
-                           kingdom=="Fungi"~streptogramins=="R",
-                           kingdom=="Fungi"~tetracyclines=="R",
-                           kingdom=="Fungi"~trimethoprims=="R",
-                           kingdom=="Fungi"~glycopeptides=="R",
-                           kingdom=="Fungi"~MTR=="R",
-                           kingdom=="Fungi"~FDX=="R",
-                           kingdom=="Fungi"~NIT=="R",
-                           kingdom=="Fungi"~FOS=="R",
-                           kingdom=="Fungi"~NOV=="R",
-                           kingdom=="Fungi"~CHL=="R",
-                           kingdom=="Fungi"~DAP=="R",
-                           genus=="Enterobacter"~AMP=="R",
-                           genus=="Enterobacter"~AMX=="R",
-                           genus=="Enterobacter"~SAM=="R",
-                           genus=="Enterobacter"~AMC=="R",
-                           genus=="Enterobacter"~LEX=="R",
-                           genus=="Enterobacter"~CZO=="R",
-                           PIP=="S"~TZP=="S",
-                           TMP=="S"~SXT=="S",
-                           PEN=="S"~AMP=="S",
-                           AMP=="S"~SAM=="S",
-                           SAM=="S"~TZP=="S",
-                           TZP=="R"~SAM=="R",
-                           SAM=="R"~AMP=="R",
-                           AMP=="R"~PEN=="R",
-                           phylum=="Pseudomonadota"~DAP=="R",
-                           genus=="Pseudomonas"~NIT=="R",
-                           genus=="Pseudomonas"~SXT=="R",
-                           org_o2=="aerobe"~MTR=="R")
-  
+  x <- custom_eucast_rules(
+    genus == "Enterococcus" ~ cephalosporins == "R", #----------------------------------------------Add custom rules
+    genus == "Enterococcus" ~ aminoglycosides == "R",
+    genus == "Enterococcus" ~ macrolides == "R",
+    genus == "Enterococcus" ~ lincosamides == "R",
+    fullname == "Enterococcus faecium" ~ carbapenems == "R",
+    genus == "Enterococcus" & AMP == "R" ~ SAM == "R",
+    genus == "Staphylococcus" & OXA == "S" ~ AMC == "S",
+    genus == "Staphylococcus" & OXA == "S" ~ SAM == "S",
+    genus == "Staphylococcus" & OXA == "S" ~ TZP == "S",
+    genus == "Staphylococcus" & OXA == "S" ~ AMC == "S",
+    genus == "Staphylococcus" & OXA == "S" ~ cephalosporins == "S",
+    genus == "Staphylococcus" & OXA == "S" ~ carbapenems == "S",
+    genus == "Staphylococcus" ~ CAZ == "R",
+    genus == "Staphylococcus" & OXA == "R" ~ AMC == "R",
+    genus == "Staphylococcus" & OXA == "R" ~ SAM == "R",
+    genus == "Staphylococcus" & OXA == "R" ~ TZP == "R",
+    genus == "Staphylococcus" & OXA == "R" ~ AMC == "R",
+    genus == "Staphylococcus" & OXA == "R" ~ cephalosporins_1st == "R",
+    genus == "Staphylococcus" & OXA == "R" ~ cephalosporins_2nd == "R",
+    genus == "Staphylococcus" & OXA == "R" ~ cephalosporins_3rd == "R",
+    genus == "Staphylococcus" & OXA == "R" ~ cephalosporins_4th == "R",
+    genus == "Staphylococcus" & OXA == "R" ~ carbapenems == "R",
+    genus == "Staphylococcus" & PEN == "S" ~ aminopenicillins == "S",
+    genus == "Staphylococcus" & PEN == "R" ~ aminopenicillins == "R",
+    genus == "Streptococcus" & PEN == "S" ~ aminopenicillins == "S",
+    genus == "Streptococcus" & PEN == "S" ~ ureidopenicillins == "S",
+    genus == "Streptococcus" & PEN == "S" ~ cephalosporins_except_caz == "S",
+    kingdom == "Fungi" ~ aminoglycosides == "R",
+    kingdom == "Fungi" ~ antimycobacterials == "R",
+    kingdom == "Fungi" ~ betalactams == "R",
+    kingdom == "Fungi" ~ quinolones == "R",
+    kingdom == "Fungi" ~ lincosamides == "R",
+    kingdom == "Fungi" ~ macrolides == "R",
+    kingdom == "Fungi" ~ oxazolidinones == "R",
+    kingdom == "Fungi" ~ polymyxins == "R",
+    kingdom == "Fungi" ~ streptogramins == "R",
+    kingdom == "Fungi" ~ tetracyclines == "R",
+    kingdom == "Fungi" ~ trimethoprims == "R",
+    kingdom == "Fungi" ~ glycopeptides == "R",
+    kingdom == "Fungi" ~ MTR == "R",
+    kingdom == "Fungi" ~ FDX == "R",
+    kingdom == "Fungi" ~ NIT == "R",
+    kingdom == "Fungi" ~ FOS == "R",
+    kingdom == "Fungi" ~ NOV == "R",
+    kingdom == "Fungi" ~ CHL == "R",
+    kingdom == "Fungi" ~ DAP == "R",
+    genus == "Enterobacter" ~ AMP == "R",
+    genus == "Enterobacter" ~ AMX == "R",
+    genus == "Enterobacter" ~ SAM == "R",
+    genus == "Enterobacter" ~ AMC == "R",
+    genus == "Enterobacter" ~ LEX == "R",
+    genus == "Enterobacter" ~ CZO == "R",
+    PIP == "S" ~ TZP == "S",
+    TMP == "S" ~ SXT == "S",
+    PEN == "S" ~ AMP == "S",
+    AMP == "S" ~ SAM == "S",
+    SAM == "S" ~ TZP == "S",
+    TZP == "R" ~ SAM == "R",
+    SAM == "R" ~ AMP == "R",
+    AMP == "R" ~ PEN == "R",
+    phylum == "Pseudomonadota" ~ DAP == "R",
+    genus == "Pseudomonas" ~ NIT == "R",
+    genus == "Pseudomonas" ~ SXT == "R",
+    org_o2 == "aerobe" ~ MTR == "R"
+  )
+
   df %>% #---------------------------------------------------------------------------------------------------------Fill intrinsic resistance
-    eucast_rules(col_mo = "org_name",
-                 ampc_cephalosporin_resistance = "R",
-                 rules="all",
-                 custom_rules = x) %>% 
-    mutate(MTR=case_when(org_o2!="anaerobe"~"R",
-                         TRUE~MTR),
-           PEN=case_when(grepl("Staphylococcus",org_fullname) & OXA=="R"~"R",
-                         TRUE~PEN),
-           AMP=case_when(grepl("Staphylococcus",org_fullname) & OXA=="R"~"R",
-                         grepl("Staphylococcus",org_fullname) & PEN=="R"~"R",
-                         TRUE~AMP),
-           AMX=case_when(grepl("Staphylococcus",org_fullname) & OXA=="R"~"R",
-                         TRUE~AMX),
-           AMC=case_when(grepl("Staphylococcus",org_fullname) & OXA=="R"~"R",
-                         TRUE~AMC),
-           PIP=case_when(grepl("Staphylococcus",org_fullname) & OXA=="R"~"R",
-                         TRUE~PIP),
-           SAM=case_when(grepl("Staphylococcus",org_fullname) & OXA=="R"~"R",
-                         TRUE~SAM),
-           cleaning = rep("(w/intr. R)",nrow(df)))
-  
+    eucast_rules(
+      col_mo = "org_name",
+      ampc_cephalosporin_resistance = "R",
+      rules = "all",
+      custom_rules = x
+    ) %>%
+    mutate(
+      MTR = case_when(org_o2 != "anaerobe" ~ "R", TRUE ~ MTR),
+      PEN = case_when(
+        grepl("Staphylococcus", org_fullname) & OXA == "R" ~ "R",
+        TRUE ~ PEN
+      ),
+      AMP = case_when(
+        grepl("Staphylococcus", org_fullname) & OXA == "R" ~ "R",
+        grepl("Staphylococcus", org_fullname) & PEN == "R" ~ "R",
+        TRUE ~ AMP
+      ),
+      AMX = case_when(
+        grepl("Staphylococcus", org_fullname) & OXA == "R" ~ "R",
+        TRUE ~ AMX
+      ),
+      AMC = case_when(
+        grepl("Staphylococcus", org_fullname) & OXA == "R" ~ "R",
+        TRUE ~ AMC
+      ),
+      PIP = case_when(
+        grepl("Staphylococcus", org_fullname) & OXA == "R" ~ "R",
+        TRUE ~ PIP
+      ),
+      SAM = case_when(
+        grepl("Staphylococcus", org_fullname) & OXA == "R" ~ "R",
+        TRUE ~ SAM
+      ),
+      cleaning = rep("(w/intr. R)", nrow(df))
+    )
 }
 
 ###Imputing missing results
-res_sim <- function(df,col,condition,col2,condition2,antibiotic,alpha_prior,beta_prior,antimicrobial_name,extra="") {
-  
+res_sim <- function(
+  df,
+  col,
+  condition,
+  col2,
+  condition2,
+  antibiotic,
+  alpha_prior,
+  beta_prior,
+  antimicrobial_name,
+  extra = ""
+) {
   antibiotic <- enquo(antibiotic)
   col <- enquo(col)
   col2 <- enquo(col2)
-  
-  df$isolate_id <- as.character(df$org_name)#------------------------------------------------------------------------Unique isolate id column
+
+  df$isolate_id <- as.character(df$org_name) #------------------------------------------------------------------------Unique isolate id column
   df$isolate_id[!is.na(df$isolate_id)] <- 1:sum(!is.na(df$org_name))
-  
-  x <- nrow(df %>%#--------------------------------------------------------------------------------------------------Number of observed Rs
-              dplyr::filter(grepl(condition,!!col) &
-                              grepl(condition2,!!col2) &
-                              !!antibiotic=="R"))
-  
-  N <- nrow(df %>%#--------------------------------------------------------------------------------------------------Total number of observed results
-              dplyr::filter(grepl(condition,!!col) &
-                              grepl(condition2,!!col2) &
-                              !is.na(!!antibiotic)))
-  
-  if(N>1) {
-    
+
+  x <- nrow(
+    df %>% #--------------------------------------------------------------------------------------------------Number of observed Rs
+      dplyr::filter(
+        grepl(condition, !!col) &
+          grepl(condition2, !!col2) &
+          !!antibiotic == "R"
+      )
+  )
+
+  N <- nrow(
+    df %>% #--------------------------------------------------------------------------------------------------Total number of observed results
+      dplyr::filter(
+        grepl(condition, !!col) &
+          grepl(condition2, !!col2) &
+          !is.na(!!antibiotic)
+      )
+  )
+
+  if (N > 1) {
     #Bayesian calculations
-    p <- seq( from=0 , to=1 , length.out=1e4 )
-    
+    p <- seq(from = 0, to = 1, length.out = 1e4)
+
     posterior_alpha <- alpha_prior + x
-    
+
     posterior_beta <- beta_prior + N - x
-    
+
     mean_prob <- posterior_alpha / (posterior_alpha + posterior_beta)
     mode_prob <- (posterior_alpha - 1) / (posterior_alpha + posterior_beta - 2)
-    
-    prior <- (p ^ (alpha_prior - 1)) * ((1 - p) ^ (beta_prior - 1))
-    
-    likelihood <- (p ^ x) * ( (1 - p) ^ (N - x)  )
-    
-    posterior <-  p ^ (posterior_alpha - 1) * (1 - p) ^ (posterior_beta - 1)
-    
+
+    prior <- (p^(alpha_prior - 1)) * ((1 - p)^(beta_prior - 1))
+
+    likelihood <- (p^x) * ((1 - p)^(N - x))
+
+    posterior <- p^(posterior_alpha - 1) * (1 - p)^(posterior_beta - 1)
+
     if (mean(posterior) != 0 & mean(posterior) != 1) {
-      
       #Sampling posterior distribution
-      
-      prior_samples <- sample( p , prob=prior , size=1e4 , replace=TRUE )
-      prior_samples <- tibble(Probability = prior_samples,Distribution=rep("Prior",length(prior_samples)))
-      
-      likelihood_samples <- sample( p , prob=likelihood , size=1e4 , replace=TRUE )
-      likelihood_samples <- tibble(Probability = likelihood_samples,Distribution=rep("Likelihood",length(likelihood_samples)))
-      
-      post_samples <- sample( p , prob=posterior , size=1e4 , replace=TRUE )
-      post_samples <- tibble(Probability = post_samples,Distribution=rep("Posterior",length(post_samples)))
-      
+
+      prior_samples <- sample(p, prob = prior, size = 1e4, replace = TRUE)
+      prior_samples <- tibble(
+        Probability = prior_samples,
+        Distribution = rep("Prior", length(prior_samples))
+      )
+
+      likelihood_samples <- sample(
+        p,
+        prob = likelihood,
+        size = 1e4,
+        replace = TRUE
+      )
+      likelihood_samples <- tibble(
+        Probability = likelihood_samples,
+        Distribution = rep("Likelihood", length(likelihood_samples))
+      )
+
+      post_samples <- sample(p, prob = posterior, size = 1e4, replace = TRUE)
+      post_samples <- tibble(
+        Probability = post_samples,
+        Distribution = rep("Posterior", length(post_samples))
+      )
+
       #Prior, likelihood and posterior density plot
-      
-      prior_2 <- prior/max(prior)
-      prior_plot <- tibble(Density = prior_2,Distribution=rep("Prior",length(prior_2)),Probability=p)
-      
-      likelihood_2 <- likelihood/max(likelihood)
-      likelihood_plot <- tibble(Density = likelihood_2,Distribution=rep("Likelihood",length(likelihood_2)),Probability=p)
-      
-      posterior_2 <- posterior/max(posterior)
-      post_plot <- tibble(Density = posterior_2,Distribution=rep("Posterior",length(posterior_2)),Probability=p)
-      
-      post_df <- rbind(prior_plot,likelihood_plot,post_plot)
-      post_df$Distribution <- factor(post_df$Distribution, levels=c("Prior","Likelihood","Posterior"))
-      
-      print(ggplot(post_df,aes(y=Density,x=Probability,group=Distribution,fill=Distribution,color=Distribution)) +
-              geom_line() +
-              theme(axis.title.y=element_blank(),
-                    axis.text.y=element_blank(),
-                    axis.ticks.y=element_blank()) +
-              geom_line(size=.5) +
-              geom_ribbon(data=subset(post_df,Probability>0 & Probability<1),aes(x=Probability,ymax=Density),ymin=0,alpha=0.3) +
-              scale_fill_manual(name='', values=c("Prior" = "red", "Likelihood" = "green4","Posterior"="blue")) +
-              guides(color = FALSE) +
-              labs(title=glue("Probability: {antimicrobial_name} resistance in {condition}{extra}")))
-      
-      N_star <- nrow(df %>%
-                       dplyr::filter(grepl(condition,!!col) &
-                                       grepl(condition2,!!col2) &
-                                       is.na(!!antibiotic)))
-      
+
+      prior_2 <- prior / max(prior)
+      prior_plot <- tibble(
+        Density = prior_2,
+        Distribution = rep("Prior", length(prior_2)),
+        Probability = p
+      )
+
+      likelihood_2 <- likelihood / max(likelihood)
+      likelihood_plot <- tibble(
+        Density = likelihood_2,
+        Distribution = rep("Likelihood", length(likelihood_2)),
+        Probability = p
+      )
+
+      posterior_2 <- posterior / max(posterior)
+      post_plot <- tibble(
+        Density = posterior_2,
+        Distribution = rep("Posterior", length(posterior_2)),
+        Probability = p
+      )
+
+      post_df <- rbind(prior_plot, likelihood_plot, post_plot)
+      post_df$Distribution <- factor(
+        post_df$Distribution,
+        levels = c("Prior", "Likelihood", "Posterior")
+      )
+
+      print(
+        ggplot(
+          post_df,
+          aes(
+            y = Density,
+            x = Probability,
+            group = Distribution,
+            fill = Distribution,
+            color = Distribution
+          )
+        ) +
+          geom_line() +
+          theme(
+            axis.title.y = element_blank(),
+            axis.text.y = element_blank(),
+            axis.ticks.y = element_blank()
+          ) +
+          geom_line(size = .5) +
+          geom_ribbon(
+            data = subset(post_df, Probability > 0 & Probability < 1),
+            aes(x = Probability, ymax = Density),
+            ymin = 0,
+            alpha = 0.3
+          ) +
+          scale_fill_manual(
+            name = '',
+            values = c(
+              "Prior" = "red",
+              "Likelihood" = "green4",
+              "Posterior" = "blue"
+            )
+          ) +
+          guides(color = FALSE) +
+          labs(
+            title = glue(
+              "Probability: {antimicrobial_name} resistance in {condition}{extra}"
+            )
+          )
+      )
+
+      N_star <- nrow(
+        df %>%
+          dplyr::filter(
+            grepl(condition, !!col) &
+              grepl(condition2, !!col2) &
+              is.na(!!antibiotic)
+          )
+      )
+
       #Posterior predictive bar plot
-      
-      BetaBinom <- Vectorize(function(x_star){
-        log.val <- lchoose(N_star, x_star) + lbeta(posterior_alpha+x_star,posterior_beta+N_star-x_star) - lbeta(posterior_alpha,posterior_beta)
+
+      BetaBinom <- Vectorize(function(x_star) {
+        log.val <- lchoose(N_star, x_star) +
+          lbeta(posterior_alpha + x_star, posterior_beta + N_star - x_star) -
+          lbeta(posterior_alpha, posterior_beta)
         return(exp(log.val))
       })
-      
-      
+
       post_predictive <- BetaBinom(1:N_star)
-      plot(1:N_star,BetaBinom(1:N_star),type="h",col="darkblue",xlab="Estimated prevalence of resistance",ylab="Probability density",
-           main = glue("Estimated prevalence of {antimicrobial_name} resistance in {N_star} {condition}{extra} isolates"),cex.axis= 1.5,cex.lab=1.5,lwd=4)
-      
-      samples <- sample( p , prob=posterior , size=1e4 , replace=TRUE )
-      
+      plot(
+        1:N_star,
+        BetaBinom(1:N_star),
+        type = "h",
+        col = "darkblue",
+        xlab = "Estimated prevalence of resistance",
+        ylab = "Probability density",
+        main = glue(
+          "Estimated prevalence of {antimicrobial_name} resistance in {N_star} {condition}{extra} isolates"
+        ),
+        cex.axis = 1.5,
+        cex.lab = 1.5,
+        lwd = 4
+      )
+
+      samples <- sample(p, prob = posterior, size = 1e4, replace = TRUE)
     } else {
-      
       samples = mean(posterior)
-      
     }
-    
+
     #Summary statistics
-    
-    simu <- rbetabinom(nrow(df %>%
-                              dplyr::filter(grepl(condition,!!col) &
-                                              grepl(condition2,!!col2) &
-                                              is.na(!!antibiotic))),
-                       size = 1 ,
-                       shape1 = posterior_alpha,
-                       shape2 = posterior_beta)
-    
-    n_likelihood <- nrow(df %>%
-                           dplyr::filter(grepl(condition,!!col) &
-                                           grepl(condition2,!!col2) &
-                                           !is.na(!!antibiotic)))
-    n_simulated <- nrow(df %>%
-                          dplyr::filter(grepl(condition,!!col) &
-                                          grepl(condition2,!!col2) &
-                                          is.na(!!antibiotic)))
-    
-    
-    if(mean(likelihood)!=0) {
-      
-      likelihood_samples <- sample( p , prob=likelihood , size=1e4 , replace=TRUE )
-      
+
+    simu <- rbetabinom(
+      nrow(
+        df %>%
+          dplyr::filter(
+            grepl(condition, !!col) &
+              grepl(condition2, !!col2) &
+              is.na(!!antibiotic)
+          )
+      ),
+      size = 1,
+      shape1 = posterior_alpha,
+      shape2 = posterior_beta
+    )
+
+    n_likelihood <- nrow(
+      df %>%
+        dplyr::filter(
+          grepl(condition, !!col) &
+            grepl(condition2, !!col2) &
+            !is.na(!!antibiotic)
+        )
+    )
+    n_simulated <- nrow(
+      df %>%
+        dplyr::filter(
+          grepl(condition, !!col) &
+            grepl(condition2, !!col2) &
+            is.na(!!antibiotic)
+        )
+    )
+
+    if (mean(likelihood) != 0) {
+      likelihood_samples <- sample(
+        p,
+        prob = likelihood,
+        size = 1e4,
+        replace = TRUE
+      )
     } else {
-      
       likelihood_samples <- 0
-      
     }
-    
-    
-    
-    prior_amr_rate <- alpha_prior/(alpha_prior+beta_prior)
-    mean_likelihood <- mean(rbinom(1e4,
-                                   size = 1 ,
-                                   prob = likelihood_samples))
+
+    prior_amr_rate <- alpha_prior / (alpha_prior + beta_prior)
+    mean_likelihood <- mean(rbinom(1e4, size = 1, prob = likelihood_samples))
     mean_posterior <- posterior_alpha / (posterior_alpha + posterior_beta)
-    mode_posterior <- (posterior_alpha - 1) / (posterior_alpha + posterior_beta - 2)
-    HPDI_posterior <- ifelse(mean(samples)==0,NA,data.frame(t(HPDI(samples,prob=0.95))))
-    HPDI_samples <- data.frame(cbind(n_likelihood,n_simulated,prior_amr_rate,mean_likelihood,mean_posterior,mode_posterior,HPDI_posterior))
+    mode_posterior <- (posterior_alpha - 1) /
+      (posterior_alpha + posterior_beta - 2)
+    HPDI_posterior <- ifelse(
+      mean(samples) == 0,
+      NA,
+      data.frame(t(HPDI(samples, prob = 0.95)))
+    )
+    HPDI_samples <- data.frame(cbind(
+      n_likelihood,
+      n_simulated,
+      prior_amr_rate,
+      mean_likelihood,
+      mean_posterior,
+      mode_posterior,
+      HPDI_posterior
+    ))
     rownames(HPDI_samples) <- glue("{condition}_{antimicrobial_name}{extra}")
-    
-    assign(glue("{condition}_{antimicrobial_name}{extra}"),HPDI_samples,envir = .GlobalEnv)
-    
+
+    assign(
+      glue("{condition}_{antimicrobial_name}{extra}"),
+      HPDI_samples,
+      envir = .GlobalEnv
+    )
+
     #Result simulation
-    
-    simu <- ifelse(simu==1,"R","S")
-    
-    target <- df %>% dplyr::filter(grepl(condition,!!col) &
-                                     grepl(condition2,!!col2)) %>% 
-      select(isolate_id,!!antibiotic) %>% 
-      mutate(!!antibiotic := as.character(!!antibiotic)) %>% data.frame()
-    
+
+    simu <- ifelse(simu == 1, "R", "S")
+
+    target <- df %>%
+      dplyr::filter(
+        grepl(condition, !!col) &
+          grepl(condition2, !!col2)
+      ) %>%
+      select(isolate_id, !!antibiotic) %>%
+      mutate(!!antibiotic := as.character(!!antibiotic)) %>%
+      data.frame()
+
     target[is.na(target)] <- simu
-    
-    target <- target %>% distinct(isolate_id,.keep_all = T)
-    
-    df <- df %>% mutate(!!antibiotic := as.character(!!antibiotic)) %>% 
-      rows_update(target,by=c("isolate_id"))
-    
-    sample_df <- tibble(cbind(tibble(samples=samples),tibble(org_name=rep(glue("{condition}"),length(samples)))))
-    
+
+    target <- target %>% distinct(isolate_id, .keep_all = T)
+
+    df <- df %>%
+      mutate(!!antibiotic := as.character(!!antibiotic)) %>%
+      rows_update(target, by = c("isolate_id"))
+
+    sample_df <- tibble(cbind(
+      tibble(samples = samples),
+      tibble(org_name = rep(glue("{condition}"), length(samples)))
+    ))
+
     sample_df <-
       sample_df %>%
       group_by(org_name) %>%
-      mutate(outlier = samples < quantile(samples, .25) - 1.5*IQR(samples) | samples > quantile(samples, .75) + 1.5*IQR(samples)) %>%
+      mutate(
+        outlier = samples < quantile(samples, .25) - 1.5 * IQR(samples) |
+          samples > quantile(samples, .75) + 1.5 * IQR(samples)
+      ) %>%
       ungroup
-    
-    assign(glue("{condition}_{antimicrobial_name}{extra}_df"),sample_df,envir = .GlobalEnv)
-    
+
+    assign(
+      glue("{condition}_{antimicrobial_name}{extra}_df"),
+      sample_df,
+      envir = .GlobalEnv
+    )
+
     df %>% select(-isolate_id)
-    
   } else {
-    
     #Output for insufficient results to inform likelihood
-    
+
     #Summary statistics
-    
-    simu <- rbetabinom(nrow(df %>%
-                              dplyr::filter(grepl(condition,!!col) &
-                                              grepl(condition2,!!col2) &
-                                              is.na(!!antibiotic))),
-                       size = 1 ,
-                       shape1 = alpha_prior,
-                       shape2 = beta_prior)
-    
-    n_likelihood <- nrow(df %>%
-                           dplyr::filter(grepl(condition,!!col) &
-                                           grepl(condition2,!!col2) &
-                                           !is.na(!!antibiotic)))
-    n_simulated <- nrow(df %>%
-                          dplyr::filter(grepl(condition,!!col) &
-                                          grepl(condition2,!!col2) &
-                                          is.na(!!antibiotic)))
-    
-    
+
+    simu <- rbetabinom(
+      nrow(
+        df %>%
+          dplyr::filter(
+            grepl(condition, !!col) &
+              grepl(condition2, !!col2) &
+              is.na(!!antibiotic)
+          )
+      ),
+      size = 1,
+      shape1 = alpha_prior,
+      shape2 = beta_prior
+    )
+
+    n_likelihood <- nrow(
+      df %>%
+        dplyr::filter(
+          grepl(condition, !!col) &
+            grepl(condition2, !!col2) &
+            !is.na(!!antibiotic)
+        )
+    )
+    n_simulated <- nrow(
+      df %>%
+        dplyr::filter(
+          grepl(condition, !!col) &
+            grepl(condition2, !!col2) &
+            is.na(!!antibiotic)
+        )
+    )
+
     #Result simulation
-    
-    simu <- ifelse(simu==1,"R","S")
-    
-    target <- df %>% dplyr::filter(grepl(condition,!!col) &
-                                     grepl(condition2,!!col2)) %>% 
-      select(isolate_id,!!antibiotic) %>% 
-      mutate(!!antibiotic := as.character(!!antibiotic)) %>% data.frame()
-    
+
+    simu <- ifelse(simu == 1, "R", "S")
+
+    target <- df %>%
+      dplyr::filter(
+        grepl(condition, !!col) &
+          grepl(condition2, !!col2)
+      ) %>%
+      select(isolate_id, !!antibiotic) %>%
+      mutate(!!antibiotic := as.character(!!antibiotic)) %>%
+      data.frame()
+
     target[is.na(target)] <- simu
-    
-    target <- target %>% distinct(isolate_id,.keep_all = T)
-    
-    df <- df %>% mutate(!!antibiotic := as.character(!!antibiotic)) %>% 
-      rows_update(target,by=c("isolate_id"))
-    
+
+    target <- target %>% distinct(isolate_id, .keep_all = T)
+
+    df <- df %>%
+      mutate(!!antibiotic := as.character(!!antibiotic)) %>%
+      rows_update(target, by = c("isolate_id"))
+
     df %>% select(-isolate_id)
-    
-    print(glue("Insufficient results to calculate {antimicrobial_name} resistance likelihood for {condition}"))
-    
-    missing <- data.frame(Antimicrobial=glue("{antimicrobial_name}"),Organism=glue("{condition}"))
-    
-    assign(glue("missing"),missing,envir = .GlobalEnv)
-    
-    missings <- rbind(missings,missing)
-    
-    assign(glue("missings"),missings,envir = .GlobalEnv)
-    
-    samples <- rep(1,1e4)
-    
-    HPDI_samples <- data.frame(matrix(nrow=1,ncol=7))
+
+    print(glue(
+      "Insufficient results to calculate {antimicrobial_name} resistance likelihood for {condition}"
+    ))
+
+    missing <- data.frame(
+      Antimicrobial = glue("{antimicrobial_name}"),
+      Organism = glue("{condition}")
+    )
+
+    assign(glue("missing"), missing, envir = .GlobalEnv)
+
+    missings <- rbind(missings, missing)
+
+    assign(glue("missings"), missings, envir = .GlobalEnv)
+
+    samples <- rep(1, 1e4)
+
+    HPDI_samples <- data.frame(matrix(nrow = 1, ncol = 7))
     rownames(HPDI_samples) <- glue("{condition}_{antimicrobial_name}{extra}")
-    colnames(HPDI_samples) <- c("n_likelihood","n_simulated","prior_amr_rate",
-                                "mean_likelihood","mean_posterior","mode_posterior",
-                                "HPDI_posterior")
-    
-    assign(glue("{condition}_{antimicrobial_name}{extra}"),HPDI_samples,envir = .GlobalEnv)
-    
-    sample_df <- tibble(cbind(tibble(samples=rep(5,length(samples)))),tibble(org_name=rep(glue("{condition}"),length(samples))),
-                        tibble(outlier=rep(FALSE,length(samples))))
-    
-    assign(glue("{condition}_{antimicrobial_name}{extra}_df"),sample_df,envir = .GlobalEnv)
-    
-    
+    colnames(HPDI_samples) <- c(
+      "n_likelihood",
+      "n_simulated",
+      "prior_amr_rate",
+      "mean_likelihood",
+      "mean_posterior",
+      "mode_posterior",
+      "HPDI_posterior"
+    )
+
+    assign(
+      glue("{condition}_{antimicrobial_name}{extra}"),
+      HPDI_samples,
+      envir = .GlobalEnv
+    )
+
+    sample_df <- tibble(
+      cbind(tibble(samples = rep(5, length(samples)))),
+      tibble(org_name = rep(glue("{condition}"), length(samples))),
+      tibble(outlier = rep(FALSE, length(samples)))
+    )
+
+    assign(
+      glue("{condition}_{antimicrobial_name}{extra}_df"),
+      sample_df,
+      envir = .GlobalEnv
+    )
+
     df %>% select(-isolate_id)
-    
   }
-  
 }
 COL_simul <- function(df) {
-  
-  par(mfrow = c(1,1))
-  
+  par(mfrow = c(1, 1))
+
   df <- df %>%
-    mutate(colistin_bug = case_when(org_order=="Enterobacterales" & org_family!="Morganellaceae"
-                                    & org_fullname!="Serratia marcescens" & org_fullname!="Hafnia"
-                                    ~ "Enterobacterales",
-                                    TRUE ~ "N")) %>% 
-    res_sim(colistin_bug,"Enterobacterales",org_fullname,"",COL,1,10000,"Colistin",) %>%
-    select(-colistin_bug) %>% 
-    res_sim(org_fullname,"Pseudomonas aeruginosa",org_fullname,"",COL,1,10000,"Colistin",) %>% 
-    res_sim(org_genus,"Acinetobacter",org_fullname,"",COL,1,10000,"Colistin",)
-  
-  
+    mutate(
+      colistin_bug = case_when(
+        org_order == "Enterobacterales" &
+          org_family != "Morganellaceae" &
+          org_fullname != "Serratia marcescens" &
+          org_fullname != "Hafnia" ~ "Enterobacterales",
+        TRUE ~ "N"
+      )
+    ) %>%
+    res_sim(
+      colistin_bug,
+      "Enterobacterales",
+      org_fullname,
+      "",
+      COL,
+      1,
+      10000,
+      "Colistin",
+    ) %>%
+    select(-colistin_bug) %>%
+    res_sim(
+      org_fullname,
+      "Pseudomonas aeruginosa",
+      org_fullname,
+      "",
+      COL,
+      1,
+      10000,
+      "Colistin",
+    ) %>%
+    res_sim(
+      org_genus,
+      "Acinetobacter",
+      org_fullname,
+      "",
+      COL,
+      1,
+      10000,
+      "Colistin",
+    )
+
   COL_summary <- data.frame(rbind(
     `Enterobacterales_Colistin`,
     `Pseudomonas aeruginosa_Colistin`,
     `Acinetobacter_Colistin`
   ))
-  
+
   COLdf <- data.frame(rbind(
     `Enterobacterales_Colistin_df`,
     `Pseudomonas aeruginosa_Colistin_df`,
     `Acinetobacter_Colistin_df`
   ))
-  
-  COLdf$org_name <- factor(COLdf$org_name, levels = COLdf %>% 
-                             distinct(org_name) %>% unlist()) %>% 
+
+  COLdf$org_name <- factor(
+    COLdf$org_name,
+    levels = COLdf %>%
+      distinct(org_name) %>%
+      unlist()
+  ) %>%
     fct_rev()
-  
-  COL_plot <- ggplot(COLdf, aes(x=org_name,y=samples,fill=org_name))+
+
+  COL_plot <- ggplot(COLdf, aes(x = org_name, y = samples, fill = org_name)) +
     geom_boxplot(outlier.shape = NA) +
-    geom_point(data = COLdf %>% dplyr::filter(outlier), position = 'jitter',alpha=0.05) +
+    geom_point(
+      data = COLdf %>% dplyr::filter(outlier),
+      position = 'jitter',
+      alpha = 0.05
+    ) +
     coord_flip() +
-    ggtitle(glue("Posterior Resistance Probability for Colistin"))+
+    ggtitle(glue("Posterior Resistance Probability for Colistin")) +
     xlab("Organism Species/Group") +
     ylab("Probability") +
-    ylim(0,1) +
+    ylim(0, 1) +
     scale_fill_brewer(palette = "Spectral") +
     theme_classic() +
     theme(legend.position = "none")
-  
+
   print(COL_plot)
-  
-  assign("COL_summary",COL_summary,envir = .GlobalEnv)
-  
+
+  assign("COL_summary", COL_summary, envir = .GlobalEnv)
+
   df
-  
 }
 ETP_simul <- function(df) {
-  
-  par(mfrow = c(1,1))
-  
+  par(mfrow = c(1, 1))
+
   df <- df %>%
-    res_sim(org_fullname,"Salmonella Typhi",org_fullname,"",ETP,1,1e4,"Ertapenem") %>% 
-    res_sim(org_fullname,"Haemophilus influenzae",org_fullname,"",ETP,1,1e4,"Ertapenem") %>%
-    mutate(IPM = case_when(ETP=="S" & is.na(IPM) ~ "S",
-                           TRUE ~ IPM),
-           MEM = case_when(ETP=="S" & is.na(MEM) ~"S",
-                           TRUE ~ MEM))
-  
-  
+    res_sim(
+      org_fullname,
+      "Salmonella Typhi",
+      org_fullname,
+      "",
+      ETP,
+      1,
+      1e4,
+      "Ertapenem"
+    ) %>%
+    res_sim(
+      org_fullname,
+      "Haemophilus influenzae",
+      org_fullname,
+      "",
+      ETP,
+      1,
+      1e4,
+      "Ertapenem"
+    ) %>%
+    mutate(
+      IPM = case_when(ETP == "S" & is.na(IPM) ~ "S", TRUE ~ IPM),
+      MEM = case_when(ETP == "S" & is.na(MEM) ~ "S", TRUE ~ MEM)
+    )
+
   ETP_summary <- data.frame(rbind(
     `Salmonella Typhi_Ertapenem`,
     `Haemophilus influenzae_Ertapenem`
   ))
-  
+
   ETPdf <- data.frame(rbind(
     `Salmonella Typhi_Ertapenem_df`,
     `Haemophilus influenzae_Ertapenem_df`
   ))
-  
-  ETPdf$org_name <- factor(ETPdf$org_name, levels = ETPdf %>%
-                             distinct(org_name) %>% unlist()) %>% 
+
+  ETPdf$org_name <- factor(
+    ETPdf$org_name,
+    levels = ETPdf %>%
+      distinct(org_name) %>%
+      unlist()
+  ) %>%
     fct_rev()
-  
-  ETP_plot <- ggplot(ETPdf, aes(x=org_name,y=samples,fill=org_name))+
+
+  ETP_plot <- ggplot(ETPdf, aes(x = org_name, y = samples, fill = org_name)) +
     geom_boxplot(outlier.shape = NA) +
-    geom_point(data = ETPdf %>% dplyr::filter(outlier), position = 'jitter',alpha=0.05) +
+    geom_point(
+      data = ETPdf %>% dplyr::filter(outlier),
+      position = 'jitter',
+      alpha = 0.05
+    ) +
     coord_flip() +
-    ggtitle(glue("Posterior Resistance Probability for Ertapenem"))+
+    ggtitle(glue("Posterior Resistance Probability for Ertapenem")) +
     xlab("Organism Species/Group") +
     ylab("Probability") +
-    ylim(0,1) +
+    ylim(0, 1) +
     theme_classic() +
-    theme(legend.position = "none") 
-  
+    theme(legend.position = "none")
+
   print(ETP_plot)
-  
-  assign("ETP_summary",ETP_summary,envir = .GlobalEnv)
-  
+
+  assign("ETP_summary", ETP_summary, envir = .GlobalEnv)
+
   df
-  
 }
 CRO_simul <- function(df) {
-  
-  par(mfrow = c(1,1))
-  
-  
+  par(mfrow = c(1, 1))
+
   df <- df %>%
-    res_sim(org_fullname,"Haemophilus influenzae",org_fullname,"",CRO,1,1e4,"Ceftriaxone",) %>% 
-    res_sim(org_fullname,"Moraxella catarrhalis",org_fullname,"",CRO,1,1e4,"Ceftriaxone",) %>% 
-    res_sim(org_fullname,"Neisseria meningitidis",org_fullname,"",CRO,1,1e4,"Ceftriaxone",) %>% 
-    mutate(CTX = case_when(grepl("(Haemophilus influenzae|Moraxella catarrhalis|Neisseria meningitidis)",
-                                 org_fullname) &
-                             CRO=="S" & is.na(CTX) ~ "S",
-                           TRUE ~ CTX),
-           CAZ = case_when(grepl("(Haemophilus influenzae|Moraxella catarrhalis|Neisseria meningitidis)",
-                                 org_fullname) &
-                             CRO=="S" & is.na(CAZ) ~ "S",
-                           TRUE ~ CAZ),
-           CZA = case_when(grepl("(Haemophilus influenzae|Moraxella catarrhalis|Neisseria meningitidis)",
-                                 org_fullname) &
-                             CRO=="S" & is.na(CZA) ~ "S",
-                           TRUE ~ CZA),
-           CPD = case_when(grepl("(Haemophilus influenzae|Moraxella catarrhalis|Neisseria meningitidis)",
-                                 org_fullname) &
-                             CRO=="S" & is.na(CPD) ~ "S",
-                           TRUE ~ CPD))
-  
+    res_sim(
+      org_fullname,
+      "Haemophilus influenzae",
+      org_fullname,
+      "",
+      CRO,
+      1,
+      1e4,
+      "Ceftriaxone",
+    ) %>%
+    res_sim(
+      org_fullname,
+      "Moraxella catarrhalis",
+      org_fullname,
+      "",
+      CRO,
+      1,
+      1e4,
+      "Ceftriaxone",
+    ) %>%
+    res_sim(
+      org_fullname,
+      "Neisseria meningitidis",
+      org_fullname,
+      "",
+      CRO,
+      1,
+      1e4,
+      "Ceftriaxone",
+    ) %>%
+    mutate(
+      CTX = case_when(
+        grepl(
+          "(Haemophilus influenzae|Moraxella catarrhalis|Neisseria meningitidis)",
+          org_fullname
+        ) &
+          CRO == "S" &
+          is.na(CTX) ~ "S",
+        TRUE ~ CTX
+      ),
+      CAZ = case_when(
+        grepl(
+          "(Haemophilus influenzae|Moraxella catarrhalis|Neisseria meningitidis)",
+          org_fullname
+        ) &
+          CRO == "S" &
+          is.na(CAZ) ~ "S",
+        TRUE ~ CAZ
+      ),
+      CZA = case_when(
+        grepl(
+          "(Haemophilus influenzae|Moraxella catarrhalis|Neisseria meningitidis)",
+          org_fullname
+        ) &
+          CRO == "S" &
+          is.na(CZA) ~ "S",
+        TRUE ~ CZA
+      ),
+      CPD = case_when(
+        grepl(
+          "(Haemophilus influenzae|Moraxella catarrhalis|Neisseria meningitidis)",
+          org_fullname
+        ) &
+          CRO == "S" &
+          is.na(CPD) ~ "S",
+        TRUE ~ CPD
+      )
+    )
+
   CRO_summary <- data.frame(rbind(
     `Haemophilus influenzae_Ceftriaxone`,
     `Moraxella catarrhalis_Ceftriaxone`,
     `Neisseria meningitidis_Ceftriaxone`
   ))
-  
+
   CROdf <- data.frame(rbind(
     `Haemophilus influenzae_Ceftriaxone_df`,
     `Moraxella catarrhalis_Ceftriaxone_df`,
     `Neisseria meningitidis_Ceftriaxone_df`
   ))
-  
-  CROdf$org_name <- factor(CROdf$org_name, levels = CROdf %>%
-                             distinct(org_name) %>% unlist()) %>% 
+
+  CROdf$org_name <- factor(
+    CROdf$org_name,
+    levels = CROdf %>%
+      distinct(org_name) %>%
+      unlist()
+  ) %>%
     fct_rev()
-  
-  CRO_plot <- ggplot(CROdf, aes(x=org_name,y=samples,fill=org_name))+
+
+  CRO_plot <- ggplot(CROdf, aes(x = org_name, y = samples, fill = org_name)) +
     geom_boxplot(outlier.shape = NA) +
-    geom_point(data = CROdf %>% dplyr::filter(outlier), position = 'jitter',alpha=0.05) +
+    geom_point(
+      data = CROdf %>% dplyr::filter(outlier),
+      position = 'jitter',
+      alpha = 0.05
+    ) +
     coord_flip() +
-    ggtitle(glue("Posterior Resistance Probability for Ceftriaxone"))+
+    ggtitle(glue("Posterior Resistance Probability for Ceftriaxone")) +
     xlab("Organism Species/Group") +
     ylab("Probability") +
-    ylim(0,1) +
+    ylim(0, 1) +
     theme_classic() +
-    theme(legend.position = "none") 
-  
+    theme(legend.position = "none")
+
   print(CRO_plot)
-  
-  assign("CRO_summary",CRO_summary,envir = .GlobalEnv)
-  
+
+  assign("CRO_summary", CRO_summary, envir = .GlobalEnv)
+
   df
-  
 }
 CIP_simul <- function(df) {
-  
-  par(mfrow = c(1,1))
-  
-  
+  par(mfrow = c(1, 1))
+
   df <- df %>%
-    res_sim(org_fullname,"Haemophilus influenzae",org_fullname,"",CIP,1,1e4,"Ciprofloxacin",) %>% 
-    res_sim(org_fullname,"Moraxella catarrhalis",org_fullname,"",CIP,1,1e4,"Ciprofloxacin",) %>% 
-    res_sim(org_fullname,"Neisseria meningitidis",org_fullname,"",CIP,1,1e4,"Ciprofloxacin",) %>% 
-    mutate(LVX = case_when(grepl("(Haemophilus influenzae|Moraxella catarrhalis|Neisseria meningitidis)",
-                                 org_fullname) &
-                             CIP=="S" & is.na(LVX) ~ "S",
-                           TRUE ~ LVX),
-           MFX = case_when(grepl("(Haemophilus influenzae|Moraxella catarrhalis|Neisseria meningitidis)",
-                                 org_fullname) &
-                             CIP=="S" & is.na(MFX) ~ "S",
-                           TRUE ~ MFX),
-           NOR = case_when(grepl("(Haemophilus influenzae|Moraxella catarrhalis|Neisseria meningitidis)",
-                                 org_fullname) &
-                             CIP=="S" & is.na(NOR) ~ "S",
-                           TRUE ~ NOR))
-  
+    res_sim(
+      org_fullname,
+      "Haemophilus influenzae",
+      org_fullname,
+      "",
+      CIP,
+      1,
+      1e4,
+      "Ciprofloxacin",
+    ) %>%
+    res_sim(
+      org_fullname,
+      "Moraxella catarrhalis",
+      org_fullname,
+      "",
+      CIP,
+      1,
+      1e4,
+      "Ciprofloxacin",
+    ) %>%
+    res_sim(
+      org_fullname,
+      "Neisseria meningitidis",
+      org_fullname,
+      "",
+      CIP,
+      1,
+      1e4,
+      "Ciprofloxacin",
+    ) %>%
+    mutate(
+      LVX = case_when(
+        grepl(
+          "(Haemophilus influenzae|Moraxella catarrhalis|Neisseria meningitidis)",
+          org_fullname
+        ) &
+          CIP == "S" &
+          is.na(LVX) ~ "S",
+        TRUE ~ LVX
+      ),
+      MFX = case_when(
+        grepl(
+          "(Haemophilus influenzae|Moraxella catarrhalis|Neisseria meningitidis)",
+          org_fullname
+        ) &
+          CIP == "S" &
+          is.na(MFX) ~ "S",
+        TRUE ~ MFX
+      ),
+      NOR = case_when(
+        grepl(
+          "(Haemophilus influenzae|Moraxella catarrhalis|Neisseria meningitidis)",
+          org_fullname
+        ) &
+          CIP == "S" &
+          is.na(NOR) ~ "S",
+        TRUE ~ NOR
+      )
+    )
+
   CIP_summary <- data.frame(rbind(
     `Haemophilus influenzae_Ciprofloxacin`,
     `Moraxella catarrhalis_Ciprofloxacin`,
     `Neisseria meningitidis_Ciprofloxacin`
   ))
-  
+
   CIPdf <- data.frame(rbind(
     `Haemophilus influenzae_Ciprofloxacin_df`,
     `Moraxella catarrhalis_Ciprofloxacin_df`,
     `Neisseria meningitidis_Ciprofloxacin_df`
   ))
-  
-  CIPdf$org_name <- factor(CIPdf$org_name, levels = CIPdf %>%
-                             distinct(org_name) %>% unlist()) %>% 
+
+  CIPdf$org_name <- factor(
+    CIPdf$org_name,
+    levels = CIPdf %>%
+      distinct(org_name) %>%
+      unlist()
+  ) %>%
     fct_rev()
-  
-  CIP_plot <- ggplot(CIPdf, aes(x=org_name,y=samples,fill=org_name))+
+
+  CIP_plot <- ggplot(CIPdf, aes(x = org_name, y = samples, fill = org_name)) +
     geom_boxplot(outlier.shape = NA) +
-    geom_point(data = CIPdf %>% dplyr::filter(outlier), position = 'jitter',alpha=0.05) +
+    geom_point(
+      data = CIPdf %>% dplyr::filter(outlier),
+      position = 'jitter',
+      alpha = 0.05
+    ) +
     coord_flip() +
-    ggtitle(glue("Posterior Resistance Probability for Ciprofloxacin"))+
+    ggtitle(glue("Posterior Resistance Probability for Ciprofloxacin")) +
     xlab("Organism Species/Group") +
     ylab("Probability") +
-    ylim(0,1) +
+    ylim(0, 1) +
     theme_classic() +
-    theme(legend.position = "none") 
-  
+    theme(legend.position = "none")
+
   print(CIP_plot)
-  
-  assign("CIP_summary",CIP_summary,envir = .GlobalEnv)
-  
+
+  assign("CIP_summary", CIP_summary, envir = .GlobalEnv)
+
   df
-  
 }
 SPT_simul <- function(df) {
-  
-  par(mfrow = c(1,1))
-  
+  par(mfrow = c(1, 1))
+
   df <- df %>%
-    res_sim(org_fullname,"Neisseria gonorrhoeae",org_fullname,"",SPT,1,1e4,"Spectinomycin")
-  
+    res_sim(
+      org_fullname,
+      "Neisseria gonorrhoeae",
+      org_fullname,
+      "",
+      SPT,
+      1,
+      1e4,
+      "Spectinomycin"
+    )
+
   SPT_summary <- data.frame(rbind(
     `Neisseria gonorrhoeae_Spectinomycin`
   ))
-  
+
   SPTdf <- data.frame(rbind(
     `Neisseria gonorrhoeae_Spectinomycin_df`
   ))
-  
-  SPTdf$org_name <- factor(SPTdf$org_name, levels = SPTdf %>%
-                             distinct(org_name) %>% unlist()) %>% 
+
+  SPTdf$org_name <- factor(
+    SPTdf$org_name,
+    levels = SPTdf %>%
+      distinct(org_name) %>%
+      unlist()
+  ) %>%
     fct_rev()
-  
-  SPT_plot <- ggplot(SPTdf, aes(x=org_name,y=samples,fill=org_name))+
+
+  SPT_plot <- ggplot(SPTdf, aes(x = org_name, y = samples, fill = org_name)) +
     geom_boxplot(outlier.shape = NA) +
-    geom_point(data = SPTdf %>% dplyr::filter(outlier), position = 'jitter',alpha=0.05) +
+    geom_point(
+      data = SPTdf %>% dplyr::filter(outlier),
+      position = 'jitter',
+      alpha = 0.05
+    ) +
     coord_flip() +
-    ggtitle(glue("Posterior Resistance Probability for Ciprofloxacin"))+
+    ggtitle(glue("Posterior Resistance Probability for Ciprofloxacin")) +
     xlab("Organism Species/Group") +
     ylab("Probability") +
-    ylim(0,1) +
+    ylim(0, 1) +
     theme_classic() +
-    theme(legend.position = "none") 
-  
+    theme(legend.position = "none")
+
   print(SPT_plot)
-  
-  assign("SPT_summary",SPT_summary,envir = .GlobalEnv)
-  
+
+  assign("SPT_summary", SPT_summary, envir = .GlobalEnv)
+
   df
 }
 VAN_simul <- function(df) {
-  
-  par(mfrow = c(1,1))
-  
+  par(mfrow = c(1, 1))
+
   df <- df %>%
-    res_sim(org_fullname,"Streptococcus pneumoniae",org_fullname,"",VAN,1,1e4,"Vancomycin") %>% 
-    res_sim(org_fullname,"Staphylococcus aureus",org_fullname,"",VAN,1,1e4,"Vancomycin") %>% 
-    mutate(CNS = case_when(org_genus=="Staphylococcus" & org_fullname!="Staphylococcus aureus"~ "CNS",
-                           TRUE ~ "N")) %>% 
-    res_sim(CNS,"CNS",org_fullname,"",VAN,1,1e4,"Vancomycin") %>%
-    
-    mutate(BHS = case_when(grepl("Streptococcus Group",org_fullname) ~ "BHS",
-                           TRUE ~ "N")) %>%
-    res_sim(BHS,"BHS",org_fullname,"",VAN,1,1e4,"Vancomycin") %>%
-    res_sim(org_fullname,"Corynebacterium",org_fullname,"",VAN,1,1e4,"Vancomycin") %>% 
-    mutate(TEC = case_when((grepl("Staphylococcus aureus|Corynebacterium|Streptococcus pneumoniae)",org_fullname) |
-                              grepl("BHS",BHS)) &
-                             VAN=="S" & is.na(TEC) ~ "S",
-                           TRUE ~ TEC),
-           DAL = case_when(VAN=="S" & is.na(DAL) ~ "S",
-                           TRUE ~ DAL),
-           TLV = case_when(VAN=="S" & is.na(CAZ) ~ "S",
-                           TRUE ~ TLV),
-           ORI = case_when(VAN=="S" & is.na(CZA) ~ "S",
-                           TRUE ~ ORI)) %>% 
-    select(-CNS,-BHS)
-  
-  
-  
+    res_sim(
+      org_fullname,
+      "Streptococcus pneumoniae",
+      org_fullname,
+      "",
+      VAN,
+      1,
+      1e4,
+      "Vancomycin"
+    ) %>%
+    res_sim(
+      org_fullname,
+      "Staphylococcus aureus",
+      org_fullname,
+      "",
+      VAN,
+      1,
+      1e4,
+      "Vancomycin"
+    ) %>%
+    mutate(
+      CNS = case_when(
+        org_genus == "Staphylococcus" &
+          org_fullname != "Staphylococcus aureus" ~ "CNS",
+        TRUE ~ "N"
+      )
+    ) %>%
+    res_sim(CNS, "CNS", org_fullname, "", VAN, 1, 1e4, "Vancomycin") %>%
+
+    mutate(
+      BHS = case_when(
+        grepl("Streptococcus Group", org_fullname) ~ "BHS",
+        TRUE ~ "N"
+      )
+    ) %>%
+    res_sim(BHS, "BHS", org_fullname, "", VAN, 1, 1e4, "Vancomycin") %>%
+    res_sim(
+      org_fullname,
+      "Corynebacterium",
+      org_fullname,
+      "",
+      VAN,
+      1,
+      1e4,
+      "Vancomycin"
+    ) %>%
+    mutate(
+      TEC = case_when(
+        (grepl(
+          "Staphylococcus aureus|Corynebacterium|Streptococcus pneumoniae)",
+          org_fullname
+        ) |
+          grepl("BHS", BHS)) &
+          VAN == "S" &
+          is.na(TEC) ~ "S",
+        TRUE ~ TEC
+      ),
+      DAL = case_when(VAN == "S" & is.na(DAL) ~ "S", TRUE ~ DAL),
+      TLV = case_when(VAN == "S" & is.na(CAZ) ~ "S", TRUE ~ TLV),
+      ORI = case_when(VAN == "S" & is.na(CZA) ~ "S", TRUE ~ ORI)
+    ) %>%
+    select(-CNS, -BHS)
+
   VAN_summary <- data.frame(rbind(
     `Streptococcus pneumoniae_Vancomycin`,
     `Staphylococcus aureus_Vancomycin`,
@@ -801,7 +1334,7 @@ VAN_simul <- function(df) {
     `BHS_Vancomycin`,
     `Corynebacterium_Vancomycin`
   ))
-  
+
   VANdf <- data.frame(rbind(
     `Streptococcus pneumoniae_Vancomycin_df`,
     `Staphylococcus aureus_Vancomycin_df`,
@@ -809,42 +1342,89 @@ VAN_simul <- function(df) {
     `BHS_Vancomycin_df`,
     `Corynebacterium_Vancomycin_df`
   ))
-  
-  VANdf$org_name <- factor(VANdf$org_name, levels = VANdf %>%
-                             distinct(org_name) %>% unlist()) %>% 
+
+  VANdf$org_name <- factor(
+    VANdf$org_name,
+    levels = VANdf %>%
+      distinct(org_name) %>%
+      unlist()
+  ) %>%
     fct_rev()
-  
-  VAN_plot <- ggplot(VANdf, aes(x=org_name,y=samples,fill=org_name))+
+
+  VAN_plot <- ggplot(VANdf, aes(x = org_name, y = samples, fill = org_name)) +
     geom_boxplot(outlier.shape = NA) +
-    geom_point(data = VANdf %>% dplyr::filter(outlier), position = 'jitter',alpha=0.05) +
+    geom_point(
+      data = VANdf %>% dplyr::filter(outlier),
+      position = 'jitter',
+      alpha = 0.05
+    ) +
     coord_flip() +
-    ggtitle(glue("Posterior Resistance Probability for Vancomycin"))+
+    ggtitle(glue("Posterior Resistance Probability for Vancomycin")) +
     xlab("Organism Species/Group") +
     ylab("Probability") +
-    ylim(0,1) +
+    ylim(0, 1) +
     theme_classic() +
-    theme(legend.position = "none") 
-  
+    theme(legend.position = "none")
+
   print(VAN_plot)
-  
-  assign("VAN_summary",VAN_summary,envir = .GlobalEnv)
-  
+
+  assign("VAN_summary", VAN_summary, envir = .GlobalEnv)
+
   df
 }
 DAP_simul <- function(df) {
-  
-  par(mfrow = c(1,1))
-  
+  par(mfrow = c(1, 1))
+
   df <- df %>%
-    res_sim(org_fullname,"Streptococcus pneumoniae",org_fullname,"",DAP,1,1e4,"Daptomycin") %>% 
-    res_sim(org_fullname,"Staphylococcus",org_fullname,"",DAP,1,1e4,"Daptomycin") %>% 
-    mutate(BHS = case_when(grepl("Streptococcus Group",org_fullname) ~ "BHS",
-                           TRUE ~ "N")) %>%
-    res_sim(BHS,"BHS",org_fullname,"",DAP,1,1e4,"Daptomycin") %>%
-    res_sim(org_fullname,"Corynebacterium",org_fullname,"",DAP,1,1e4,"Daptomycin") %>% 
-    select(-BHS) %>% 
-    res_sim(org_fullname,"Enterococcus",org_fullname,"",DAP,1,100,"Daptomycin")
-  
+    res_sim(
+      org_fullname,
+      "Streptococcus pneumoniae",
+      org_fullname,
+      "",
+      DAP,
+      1,
+      1e4,
+      "Daptomycin"
+    ) %>%
+    res_sim(
+      org_fullname,
+      "Staphylococcus",
+      org_fullname,
+      "",
+      DAP,
+      1,
+      1e4,
+      "Daptomycin"
+    ) %>%
+    mutate(
+      BHS = case_when(
+        grepl("Streptococcus Group", org_fullname) ~ "BHS",
+        TRUE ~ "N"
+      )
+    ) %>%
+    res_sim(BHS, "BHS", org_fullname, "", DAP, 1, 1e4, "Daptomycin") %>%
+    res_sim(
+      org_fullname,
+      "Corynebacterium",
+      org_fullname,
+      "",
+      DAP,
+      1,
+      1e4,
+      "Daptomycin"
+    ) %>%
+    select(-BHS) %>%
+    res_sim(
+      org_fullname,
+      "Enterococcus",
+      org_fullname,
+      "",
+      DAP,
+      1,
+      100,
+      "Daptomycin"
+    )
+
   DAP_summary <- data.frame(rbind(
     `Streptococcus pneumoniae_Daptomycin`,
     `Staphylococcus_Daptomycin`,
@@ -852,7 +1432,7 @@ DAP_simul <- function(df) {
     `Corynebacterium_Daptomycin`,
     `Enterococcus_Daptomycin`
   ))
-  
+
   DAPdf <- data.frame(rbind(
     `Streptococcus pneumoniae_Daptomycin_df`,
     `Staphylococcus_Daptomycin_df`,
@@ -860,42 +1440,89 @@ DAP_simul <- function(df) {
     `Corynebacterium_Daptomycin_df`,
     `Enterococcus_Daptomycin_df`
   ))
-  
-  DAPdf$org_name <- factor(DAPdf$org_name, levels = DAPdf %>%
-                             distinct(org_name) %>% unlist()) %>% 
+
+  DAPdf$org_name <- factor(
+    DAPdf$org_name,
+    levels = DAPdf %>%
+      distinct(org_name) %>%
+      unlist()
+  ) %>%
     fct_rev()
-  
-  DAP_plot <- ggplot(DAPdf, aes(x=org_name,y=samples,fill=org_name))+
+
+  DAP_plot <- ggplot(DAPdf, aes(x = org_name, y = samples, fill = org_name)) +
     geom_boxplot(outlier.shape = NA) +
-    geom_point(data = DAPdf %>% dplyr::filter(outlier), position = 'jitter',alpha=0.05) +
+    geom_point(
+      data = DAPdf %>% dplyr::filter(outlier),
+      position = 'jitter',
+      alpha = 0.05
+    ) +
     coord_flip() +
-    ggtitle(glue("Posterior Resistance Probability for Daptomycin"))+
+    ggtitle(glue("Posterior Resistance Probability for Daptomycin")) +
     xlab("Organism Species/Group") +
     ylab("Probability") +
-    ylim(0,1) +
+    ylim(0, 1) +
     theme_classic() +
-    theme(legend.position = "none") 
-  
+    theme(legend.position = "none")
+
   print(DAP_plot)
-  
-  assign("DAP_summary",DAP_summary,envir = .GlobalEnv)
-  
+
+  assign("DAP_summary", DAP_summary, envir = .GlobalEnv)
+
   df
 }
 LNZ_simul <- function(df) {
-  
-  par(mfrow = c(1,1))
-  
+  par(mfrow = c(1, 1))
+
   df <- df %>%
-    res_sim(org_fullname,"Streptococcus pneumoniae",org_fullname,"",LNZ,1,1e4,"Linezolid") %>% 
-    res_sim(org_fullname,"Staphylococcus",org_fullname,"",LNZ,1,1e4,"Linezolid") %>% 
-    mutate(BHS = case_when(grepl("Streptococcus Group",org_fullname) ~ "BHS",
-                           TRUE ~ "N")) %>%
-    res_sim(BHS,"BHS",org_fullname,"",LNZ,1,1e4,"Linezolid") %>%
-    res_sim(org_fullname,"Corynebacterium",org_fullname,"",LNZ,1,1e4,"Linezolid") %>% 
-    select(-BHS) %>% 
-    res_sim(org_fullname,"Enterococcus",org_fullname,"",LNZ,1,1e4,"Linezolid")
-  
+    res_sim(
+      org_fullname,
+      "Streptococcus pneumoniae",
+      org_fullname,
+      "",
+      LNZ,
+      1,
+      1e4,
+      "Linezolid"
+    ) %>%
+    res_sim(
+      org_fullname,
+      "Staphylococcus",
+      org_fullname,
+      "",
+      LNZ,
+      1,
+      1e4,
+      "Linezolid"
+    ) %>%
+    mutate(
+      BHS = case_when(
+        grepl("Streptococcus Group", org_fullname) ~ "BHS",
+        TRUE ~ "N"
+      )
+    ) %>%
+    res_sim(BHS, "BHS", org_fullname, "", LNZ, 1, 1e4, "Linezolid") %>%
+    res_sim(
+      org_fullname,
+      "Corynebacterium",
+      org_fullname,
+      "",
+      LNZ,
+      1,
+      1e4,
+      "Linezolid"
+    ) %>%
+    select(-BHS) %>%
+    res_sim(
+      org_fullname,
+      "Enterococcus",
+      org_fullname,
+      "",
+      LNZ,
+      1,
+      1e4,
+      "Linezolid"
+    )
+
   LNZ_summary <- data.frame(rbind(
     `Streptococcus pneumoniae_Linezolid`,
     `Staphylococcus_Linezolid`,
@@ -903,7 +1530,7 @@ LNZ_simul <- function(df) {
     `Corynebacterium_Linezolid`,
     `Enterococcus_Linezolid`
   ))
-  
+
   LNZdf <- data.frame(rbind(
     `Streptococcus pneumoniae_Linezolid_df`,
     `Staphylococcus_Linezolid_df`,
@@ -911,250 +1538,341 @@ LNZ_simul <- function(df) {
     `Corynebacterium_Linezolid_df`,
     `Enterococcus_Linezolid_df`
   ))
-  
-  LNZdf$org_name <- factor(LNZdf$org_name, levels = LNZdf %>%
-                             distinct(org_name) %>% unlist()) %>% 
+
+  LNZdf$org_name <- factor(
+    LNZdf$org_name,
+    levels = LNZdf %>%
+      distinct(org_name) %>%
+      unlist()
+  ) %>%
     fct_rev()
-  
-  LNZ_plot <- ggplot(LNZdf, aes(x=org_name,y=samples,fill=org_name))+
+
+  LNZ_plot <- ggplot(LNZdf, aes(x = org_name, y = samples, fill = org_name)) +
     geom_boxplot(outlier.shape = NA) +
-    geom_point(data = LNZdf %>% dplyr::filter(outlier), position = 'jitter',alpha=0.05) +
+    geom_point(
+      data = LNZdf %>% dplyr::filter(outlier),
+      position = 'jitter',
+      alpha = 0.05
+    ) +
     coord_flip() +
-    ggtitle(glue("Posterior Resistance Probability for Linezolid"))+
+    ggtitle(glue("Posterior Resistance Probability for Linezolid")) +
     xlab("Organism Species/Group") +
     ylab("Probability") +
-    ylim(0,1) +
+    ylim(0, 1) +
     theme_classic() +
-    theme(legend.position = "none") 
-  
+    theme(legend.position = "none")
+
   print(LNZ_plot)
-  
-  assign("LNZ_summary",LNZ_summary,envir = .GlobalEnv)
-  
+
+  assign("LNZ_summary", LNZ_summary, envir = .GlobalEnv)
+
   df
 }
 PEN_simul <- function(df) {
-  
-  par(mfrow = c(1,1))
-  
+  par(mfrow = c(1, 1))
+
   df <- df %>%
-    mutate(BHS = case_when(grepl("Streptococcus Group",org_fullname) ~ "BHS",
-                           TRUE ~ "N")) %>%
-    res_sim(BHS,"BHS",org_fullname,"",PEN,1,1e4,"Benzylpenicillin") %>%
-    mutate(OXA = case_when(BHS=="BHS" & PEN=="S" ~ "S",
-                           TRUE ~ OXA),
-           AMP = case_when(BHS=="BHS" & PEN=="S" ~ "S",
-                           TRUE ~ AMP),
-           AMX = case_when(BHS=="BHS" & PEN=="S" ~ "S",
-                           TRUE ~ AMX),
-           PIP = case_when(BHS=="BHS" & PEN=="S" ~ "S",
-                           TRUE ~ PIP),
-           TIC = case_when(BHS=="BHS" & PEN=="S" ~ "S",
-                           TRUE ~ TIC),
-           CRB = case_when(BHS=="BHS" & PEN=="S" ~ "S",
-                           TRUE ~ CRB),
-           SAM = case_when(BHS=="BHS" & PEN=="S" ~ "S",
-                           TRUE ~ SAM),
-           AMC = case_when(BHS=="BHS" & PEN=="S" ~ "S",
-                           TRUE ~ AMC),
-           TZP = case_when(BHS=="BHS" & PEN=="S" ~ "S",
-                           TRUE ~ TZP),
-           LEX = case_when(BHS=="BHS" & PEN=="S" ~ "S",
-                           TRUE ~ LEX),
-           CZO = case_when(BHS=="BHS" & PEN=="S" ~ "S",
-                           TRUE ~ CZO),
-           CEC = case_when(BHS=="BHS" & PEN=="S" ~ "S",
-                           TRUE ~ CEC),
-           CXM = case_when(BHS=="BHS" & PEN=="S" ~ "S",
-                           TRUE ~ CXM),
-           FOX1 = case_when(BHS=="BHS" & PEN=="S" ~ "S",
-                            TRUE ~ FOX1),
-           CTX = case_when(BHS=="BHS" & PEN=="S" ~ "S",
-                           TRUE ~ CTX),
-           CRO = case_when(BHS=="BHS" & PEN=="S" ~ "S",
-                           TRUE ~ CRO),
-           CPD = case_when(BHS=="BHS" & PEN=="S" ~ "S",
-                           TRUE ~ CPD),
-           FEP = case_when(BHS=="BHS" & PEN=="S" ~ "S",
-                           TRUE ~ FEP),
-           CPT = case_when(BHS=="BHS" & PEN=="S" ~ "S",
-                           TRUE ~ CPT),
-           BPR = case_when(BHS=="BHS" & PEN=="S" ~ "S",
-                           TRUE ~ BPR),
-           ETP = case_when(BHS=="BHS" & PEN=="S" ~ "S",
-                           TRUE ~ ETP),
-           MEM = case_when(BHS=="BHS" & PEN=="S" ~ "S",
-                           TRUE ~ MEM),
-           IPM = case_when(BHS=="BHS" & PEN=="S" ~ "S",
-                           TRUE ~ IPM)
-    ) %>% 
+    mutate(
+      BHS = case_when(
+        grepl("Streptococcus Group", org_fullname) ~ "BHS",
+        TRUE ~ "N"
+      )
+    ) %>%
+    res_sim(BHS, "BHS", org_fullname, "", PEN, 1, 1e4, "Benzylpenicillin") %>%
+    mutate(
+      OXA = case_when(BHS == "BHS" & PEN == "S" ~ "S", TRUE ~ OXA),
+      AMP = case_when(BHS == "BHS" & PEN == "S" ~ "S", TRUE ~ AMP),
+      AMX = case_when(BHS == "BHS" & PEN == "S" ~ "S", TRUE ~ AMX),
+      PIP = case_when(BHS == "BHS" & PEN == "S" ~ "S", TRUE ~ PIP),
+      TIC = case_when(BHS == "BHS" & PEN == "S" ~ "S", TRUE ~ TIC),
+      CRB = case_when(BHS == "BHS" & PEN == "S" ~ "S", TRUE ~ CRB),
+      SAM = case_when(BHS == "BHS" & PEN == "S" ~ "S", TRUE ~ SAM),
+      AMC = case_when(BHS == "BHS" & PEN == "S" ~ "S", TRUE ~ AMC),
+      TZP = case_when(BHS == "BHS" & PEN == "S" ~ "S", TRUE ~ TZP),
+      LEX = case_when(BHS == "BHS" & PEN == "S" ~ "S", TRUE ~ LEX),
+      CZO = case_when(BHS == "BHS" & PEN == "S" ~ "S", TRUE ~ CZO),
+      CEC = case_when(BHS == "BHS" & PEN == "S" ~ "S", TRUE ~ CEC),
+      CXM = case_when(BHS == "BHS" & PEN == "S" ~ "S", TRUE ~ CXM),
+      FOX1 = case_when(BHS == "BHS" & PEN == "S" ~ "S", TRUE ~ FOX1),
+      CTX = case_when(BHS == "BHS" & PEN == "S" ~ "S", TRUE ~ CTX),
+      CRO = case_when(BHS == "BHS" & PEN == "S" ~ "S", TRUE ~ CRO),
+      CPD = case_when(BHS == "BHS" & PEN == "S" ~ "S", TRUE ~ CPD),
+      FEP = case_when(BHS == "BHS" & PEN == "S" ~ "S", TRUE ~ FEP),
+      CPT = case_when(BHS == "BHS" & PEN == "S" ~ "S", TRUE ~ CPT),
+      BPR = case_when(BHS == "BHS" & PEN == "S" ~ "S", TRUE ~ BPR),
+      ETP = case_when(BHS == "BHS" & PEN == "S" ~ "S", TRUE ~ ETP),
+      MEM = case_when(BHS == "BHS" & PEN == "S" ~ "S", TRUE ~ MEM),
+      IPM = case_when(BHS == "BHS" & PEN == "S" ~ "S", TRUE ~ IPM)
+    ) %>%
     select(-BHS)
-  
+
   PEN_summary <- data.frame(rbind(
     `BHS_Benzylpenicillin`
   ))
-  
+
   PENdf <- data.frame(rbind(
     `BHS_Benzylpenicillin_df`
   ))
-  
-  PENdf$org_name <- factor(PENdf$org_name, levels = PENdf %>%
-                             distinct(org_name) %>% unlist()) %>% 
+
+  PENdf$org_name <- factor(
+    PENdf$org_name,
+    levels = PENdf %>%
+      distinct(org_name) %>%
+      unlist()
+  ) %>%
     fct_rev()
-  
-  PEN_plot <- ggplot(PENdf, aes(x=org_name,y=samples,fill=org_name))+
+
+  PEN_plot <- ggplot(PENdf, aes(x = org_name, y = samples, fill = org_name)) +
     geom_boxplot(outlier.shape = NA) +
-    geom_point(data = PENdf %>% dplyr::filter(outlier), position = 'jitter',alpha=0.05) +
+    geom_point(
+      data = PENdf %>% dplyr::filter(outlier),
+      position = 'jitter',
+      alpha = 0.05
+    ) +
     coord_flip() +
-    ggtitle(glue("Posterior Resistance Probability for Benzylpenicillin"))+
+    ggtitle(glue("Posterior Resistance Probability for Benzylpenicillin")) +
     xlab("Organism Species/Group") +
     ylab("Probability") +
-    ylim(0,1) +
+    ylim(0, 1) +
     theme_classic() +
-    theme(legend.position = "none") 
-  
+    theme(legend.position = "none")
+
   print(PEN_plot)
-  
-  assign("PEN_summary",PEN_summary,envir = .GlobalEnv)
-  
+
+  assign("PEN_summary", PEN_summary, envir = .GlobalEnv)
+
   df
 }
 AMP_simul <- function(df) {
-  
-  par(mfrow = c(1,1))
-  
+  par(mfrow = c(1, 1))
+
   df <- df %>%
-    res_sim(org_fullname,"Enterococcus faecalis",org_fullname,"",AMP,1,1000,"Ampicillin")
-  
+    res_sim(
+      org_fullname,
+      "Enterococcus faecalis",
+      org_fullname,
+      "",
+      AMP,
+      1,
+      1000,
+      "Ampicillin"
+    )
+
   AMP_summary <- data.frame(rbind(
     `Enterococcus faecalis_Ampicillin`
   ))
-  
+
   AMPdf <- data.frame(rbind(
     `Enterococcus faecalis_Ampicillin_df`
   ))
-  
-  AMPdf$org_name <- factor(AMPdf$org_name, levels = AMPdf %>%
-                             distinct(org_name) %>% unlist()) %>% 
+
+  AMPdf$org_name <- factor(
+    AMPdf$org_name,
+    levels = AMPdf %>%
+      distinct(org_name) %>%
+      unlist()
+  ) %>%
     fct_rev()
-  
-  AMP_plot <- ggplot(AMPdf, aes(x=org_name,y=samples,fill=org_name))+
+
+  AMP_plot <- ggplot(AMPdf, aes(x = org_name, y = samples, fill = org_name)) +
     geom_boxplot(outlier.shape = NA) +
-    geom_point(data = AMPdf %>% dplyr::filter(outlier), position = 'jitter',alpha=0.05) +
+    geom_point(
+      data = AMPdf %>% dplyr::filter(outlier),
+      position = 'jitter',
+      alpha = 0.05
+    ) +
     coord_flip() +
-    ggtitle(glue("Posterior Resistance Probability for Ampicillin"))+
+    ggtitle(glue("Posterior Resistance Probability for Ampicillin")) +
     xlab("Organism Species/Group") +
     ylab("Probability") +
-    ylim(0,1) +
+    ylim(0, 1) +
     theme_classic() +
-    theme(legend.position = "none") 
-  
+    theme(legend.position = "none")
+
   print(AMP_plot)
-  
-  assign("AMP_summary",AMP_summary,envir = .GlobalEnv)
-  
+
+  assign("AMP_summary", AMP_summary, envir = .GlobalEnv)
+
   df
 }
 TEC_simul <- function(df) {
-  
-  par(mfrow = c(1,1))
-  
+  par(mfrow = c(1, 1))
+
   df <- df %>%
-    mutate(CNS = case_when(org_genus=="Staphylococcus" & org_fullname!="Staphylococcus aureus"~ "CNS",
-                           TRUE ~ "N")) %>% 
-    res_sim(CNS,"CNS",org_fullname,"",TEC,1,1e4,"Teicoplanin") %>%
-    
-    mutate(BHS = case_when(grepl("Streptococcus Group",org_fullname) ~ "BHS",
-                           TRUE ~ "N")) %>%
-    res_sim(BHS,"BHS",org_fullname,"",TEC,1,1e4,"Teicoplanin") %>%
-    res_sim(org_fullname,"Corynebacterium",org_fullname,"",TEC,1,1e4,"Teicoplanin") %>% 
-    select(-CNS,-BHS)
-  
-  
-  
+    mutate(
+      CNS = case_when(
+        org_genus == "Staphylococcus" &
+          org_fullname != "Staphylococcus aureus" ~ "CNS",
+        TRUE ~ "N"
+      )
+    ) %>%
+    res_sim(CNS, "CNS", org_fullname, "", TEC, 1, 1e4, "Teicoplanin") %>%
+
+    mutate(
+      BHS = case_when(
+        grepl("Streptococcus Group", org_fullname) ~ "BHS",
+        TRUE ~ "N"
+      )
+    ) %>%
+    res_sim(BHS, "BHS", org_fullname, "", TEC, 1, 1e4, "Teicoplanin") %>%
+    res_sim(
+      org_fullname,
+      "Corynebacterium",
+      org_fullname,
+      "",
+      TEC,
+      1,
+      1e4,
+      "Teicoplanin"
+    ) %>%
+    select(-CNS, -BHS)
+
   TEC_summary <- data.frame(rbind(
     `CNS_Teicoplanin`,
     `BHS_Teicoplanin`,
     `Corynebacterium_Teicoplanin`
   ))
-  
+
   TECdf <- data.frame(rbind(
     `CNS_Teicoplanin_df`,
     `BHS_Teicoplanin_df`,
     `Corynebacterium_Teicoplanin_df`
   ))
-  
-  TECdf$org_name <- factor(TECdf$org_name, levels = TECdf %>%
-                             distinct(org_name) %>% unlist()) %>% 
+
+  TECdf$org_name <- factor(
+    TECdf$org_name,
+    levels = TECdf %>%
+      distinct(org_name) %>%
+      unlist()
+  ) %>%
     fct_rev()
-  
-  TEC_plot <- ggplot(TECdf, aes(x=org_name,y=samples,fill=org_name))+
+
+  TEC_plot <- ggplot(TECdf, aes(x = org_name, y = samples, fill = org_name)) +
     geom_boxplot(outlier.shape = NA) +
-    geom_point(data = TECdf %>% dplyr::filter(outlier), position = 'jitter',alpha=0.05) +
+    geom_point(
+      data = TECdf %>% dplyr::filter(outlier),
+      position = 'jitter',
+      alpha = 0.05
+    ) +
     coord_flip() +
-    ggtitle(glue("Posterior Resistance Probability for Teicoplanin"))+
+    ggtitle(glue("Posterior Resistance Probability for Teicoplanin")) +
     xlab("Organism Species/Group") +
     ylab("Probability") +
-    ylim(0,1) +
+    ylim(0, 1) +
     theme_classic() +
-    theme(legend.position = "none") 
-  
+    theme(legend.position = "none")
+
   print(TEC_plot)
-  
-  assign("TEC_summary",TEC_summary,envir = .GlobalEnv)
-  
+
+  assign("TEC_summary", TEC_summary, envir = .GlobalEnv)
+
   df
 }
 RIF_simul <- function(df) {
-  
-  par(mfrow = c(1,1))
-  
+  par(mfrow = c(1, 1))
+
   df <- df %>%
-    res_sim(org_fullname,"Streptococcus pneumoniae",org_fullname,"",RIF,1,1e4,"Rifampicin")
-  
+    res_sim(
+      org_fullname,
+      "Streptococcus pneumoniae",
+      org_fullname,
+      "",
+      RIF,
+      1,
+      1e4,
+      "Rifampicin"
+    )
+
   RIF_summary <- data.frame(rbind(
     `Streptococcus pneumoniae_Rifampicin`
   ))
-  
+
   RIFdf <- data.frame(rbind(
     `Streptococcus pneumoniae_Rifampicin_df`
   ))
-  
-  RIFdf$org_name <- factor(RIFdf$org_name, levels = RIFdf %>%
-                             distinct(org_name) %>% unlist()) %>% 
+
+  RIFdf$org_name <- factor(
+    RIFdf$org_name,
+    levels = RIFdf %>%
+      distinct(org_name) %>%
+      unlist()
+  ) %>%
     fct_rev()
-  
-  RIF_plot <- ggplot(RIFdf, aes(x=org_name,y=samples,fill=org_name))+
+
+  RIF_plot <- ggplot(RIFdf, aes(x = org_name, y = samples, fill = org_name)) +
     geom_boxplot(outlier.shape = NA) +
-    geom_point(data = RIFdf %>% dplyr::filter(outlier), position = 'jitter',alpha=0.05) +
+    geom_point(
+      data = RIFdf %>% dplyr::filter(outlier),
+      position = 'jitter',
+      alpha = 0.05
+    ) +
     coord_flip() +
-    ggtitle(glue("Posterior Resistance Probability for RIFtamicin"))+
+    ggtitle(glue("Posterior Resistance Probability for RIFtamicin")) +
     xlab("Organism Species/Group") +
     ylab("Probability") +
-    ylim(0,1) +
+    ylim(0, 1) +
     theme_classic() +
-    theme(leRIFd.position = "none") 
-  
+    theme(leRIFd.position = "none")
+
   print(RIF_plot)
-  
-  assign("RIF_summary",RIF_summary,envir = .GlobalEnv)
-  
+
+  assign("RIF_summary", RIF_summary, envir = .GlobalEnv)
+
   df
 }
 TGC_simul <- function(df) {
-  
-  par(mfrow = c(1,1))
-  
+  par(mfrow = c(1, 1))
+
   df <- df %>%
-    res_sim(org_fullname,"Streptococcus pneumoniae",org_fullname,"",TGC,1,1e4,"Tigecycline") %>% 
-    res_sim(org_fullname,"Staphylococcus",org_fullname,"",TGC,1,1e4,"Tigecycline") %>% 
-    mutate(BHS = case_when(grepl("Streptococcus Group",org_fullname) ~ "BHS",
-                           TRUE ~ "N")) %>%
-    res_sim(BHS,"BHS",org_fullname,"",TGC,1,1e4,"Tigecycline") %>%
-    res_sim(org_fullname,"Corynebacterium",org_fullname,"",TGC,1,1e4,"Tigecycline") %>% 
-    select(-BHS) %>% 
-    res_sim(org_fullname,"Enterococcus",org_fullname,"",TGC,1,1000,"Tigecycline")
-  
+    res_sim(
+      org_fullname,
+      "Streptococcus pneumoniae",
+      org_fullname,
+      "",
+      TGC,
+      1,
+      1e4,
+      "Tigecycline"
+    ) %>%
+    res_sim(
+      org_fullname,
+      "Staphylococcus",
+      org_fullname,
+      "",
+      TGC,
+      1,
+      1e4,
+      "Tigecycline"
+    ) %>%
+    mutate(
+      BHS = case_when(
+        grepl("Streptococcus Group", org_fullname) ~ "BHS",
+        TRUE ~ "N"
+      )
+    ) %>%
+    res_sim(BHS, "BHS", org_fullname, "", TGC, 1, 1e4, "Tigecycline") %>%
+    res_sim(
+      org_fullname,
+      "Corynebacterium",
+      org_fullname,
+      "",
+      TGC,
+      1,
+      1e4,
+      "Tigecycline"
+    ) %>%
+    select(-BHS) %>%
+    res_sim(
+      org_fullname,
+      "Enterococcus",
+      org_fullname,
+      "",
+      TGC,
+      1,
+      1000,
+      "Tigecycline"
+    )
+
   TGC_summary <- data.frame(rbind(
     `Streptococcus pneumoniae_Tigecycline`,
     `Staphylococcus_Tigecycline`,
@@ -1162,7 +1880,7 @@ TGC_simul <- function(df) {
     `Corynebacterium_Tigecycline`,
     `Enterococcus_Tigecycline`
   ))
-  
+
   TGCdf <- data.frame(rbind(
     `Streptococcus pneumoniae_Tigecycline_df`,
     `Staphylococcus_Tigecycline_df`,
@@ -1170,97 +1888,155 @@ TGC_simul <- function(df) {
     `Corynebacterium_Tigecycline_df`,
     `Enterococcus_Tigecycline_df`
   ))
-  
-  TGCdf$org_name <- factor(TGCdf$org_name, levels = TGCdf %>%
-                             distinct(org_name) %>% unlist()) %>% 
+
+  TGCdf$org_name <- factor(
+    TGCdf$org_name,
+    levels = TGCdf %>%
+      distinct(org_name) %>%
+      unlist()
+  ) %>%
     fct_rev()
-  
-  TGC_plot <- ggplot(TGCdf, aes(x=org_name,y=samples,fill=org_name))+
+
+  TGC_plot <- ggplot(TGCdf, aes(x = org_name, y = samples, fill = org_name)) +
     geom_boxplot(outlier.shape = NA) +
-    geom_point(data = TGCdf %>% dplyr::filter(outlier), position = 'jitter',alpha=0.05) +
+    geom_point(
+      data = TGCdf %>% dplyr::filter(outlier),
+      position = 'jitter',
+      alpha = 0.05
+    ) +
     coord_flip() +
-    ggtitle(glue("Posterior Resistance Probability for Tigecycline"))+
+    ggtitle(glue("Posterior Resistance Probability for Tigecycline")) +
     xlab("Organism Species/Group") +
     ylab("Probability") +
-    ylim(0,1) +
+    ylim(0, 1) +
     theme_classic() +
-    theme(legend.position = "none") 
-  
+    theme(legend.position = "none")
+
   print(TGC_plot)
-  
-  assign("TGC_summary",TGC_summary,envir = .GlobalEnv)
-  
+
+  assign("TGC_summary", TGC_summary, envir = .GlobalEnv)
+
   df
 }
 QDA_simul <- function(df) {
-  
-  par(mfrow = c(1,1))
-  
+  par(mfrow = c(1, 1))
+
   df <- df %>%
-    res_sim(org_fullname,"Streptococcus pneumoniae",org_fullname,"",QDA,1,1e4,"Quinupristin-dalfopristin") %>% 
-    res_sim(org_fullname,"Staphylococcus",org_fullname,"",QDA,1,1e4,"Quinupristin-dalfopristin") %>% 
-    mutate(BHS = case_when(grepl("Streptococcus Group",org_fullname) ~ "BHS",
-                           TRUE ~ "N")) %>%
-    res_sim(BHS,"BHS",org_fullname,"",QDA,1,1e4,"Quinupristin-dalfopristin") %>%
-    res_sim(org_fullname,"Corynebacterium",org_fullname,"",QDA,1,1e4,"Quinupristin-dalfopristin") %>% 
+    res_sim(
+      org_fullname,
+      "Streptococcus pneumoniae",
+      org_fullname,
+      "",
+      QDA,
+      1,
+      1e4,
+      "Quinupristin-dalfopristin"
+    ) %>%
+    res_sim(
+      org_fullname,
+      "Staphylococcus",
+      org_fullname,
+      "",
+      QDA,
+      1,
+      1e4,
+      "Quinupristin-dalfopristin"
+    ) %>%
+    mutate(
+      BHS = case_when(
+        grepl("Streptococcus Group", org_fullname) ~ "BHS",
+        TRUE ~ "N"
+      )
+    ) %>%
+    res_sim(
+      BHS,
+      "BHS",
+      org_fullname,
+      "",
+      QDA,
+      1,
+      1e4,
+      "Quinupristin-dalfopristin"
+    ) %>%
+    res_sim(
+      org_fullname,
+      "Corynebacterium",
+      org_fullname,
+      "",
+      QDA,
+      1,
+      1e4,
+      "Quinupristin-dalfopristin"
+    ) %>%
     select(-BHS)
-  
+
   QDA_summary <- data.frame(rbind(
     `Streptococcus pneumoniae_Quinupristin-dalfopristin`,
     `Staphylococcus_Quinupristin-dalfopristin`,
     `BHS_Quinupristin-dalfopristin`,
     `Corynebacterium_Quinupristin-dalfopristin`
   ))
-  
+
   QDAdf <- data.frame(rbind(
     `Streptococcus pneumoniae_Quinupristin-dalfopristin_df`,
     `Staphylococcus_Quinupristin-dalfopristin_df`,
     `BHS_Quinupristin-dalfopristin_df`,
     `Corynebacterium_Quinupristin-dalfopristin_df`
   ))
-  
-  QDAdf$org_name <- factor(QDAdf$org_name, levels = QDAdf %>%
-                             distinct(org_name) %>% unlist()) %>% 
+
+  QDAdf$org_name <- factor(
+    QDAdf$org_name,
+    levels = QDAdf %>%
+      distinct(org_name) %>%
+      unlist()
+  ) %>%
     fct_rev()
-  
-  QDA_plot <- ggplot(QDAdf, aes(x=org_name,y=samples,fill=org_name))+
+
+  QDA_plot <- ggplot(QDAdf, aes(x = org_name, y = samples, fill = org_name)) +
     geom_boxplot(outlier.shape = NA) +
-    geom_point(data = QDAdf %>% dplyr::filter(outlier), position = 'jitter',alpha=0.05) +
+    geom_point(
+      data = QDAdf %>% dplyr::filter(outlier),
+      position = 'jitter',
+      alpha = 0.05
+    ) +
     coord_flip() +
-    ggtitle(glue("Posterior Resistance Probability for Quinupristin-dalfopristin"))+
+    ggtitle(glue(
+      "Posterior Resistance Probability for Quinupristin-dalfopristin"
+    )) +
     xlab("Organism Species/Group") +
     ylab("Probability") +
-    ylim(0,1) +
+    ylim(0, 1) +
     theme_classic() +
-    theme(legend.position = "none") 
-  
+    theme(legend.position = "none")
+
   print(QDA_plot)
-  
-  assign("QDA_summary",QDA_summary,envir = .GlobalEnv)
-  
+
+  assign("QDA_summary", QDA_summary, envir = .GlobalEnv)
+
   df
 }
 
 ###I to R reassignment for sensitivity analysis
 sensitivity_func <- function(df) {
-  
   df2 <- df %>% select(PEN:MTR)
-  df2[df2=="I"] <- "R"
-  df[,17:81] <- df2
-  
+  df2[df2 == "I"] <- "R"
+  df[, 17:81] <- df2
+
   df
-  
 }
 
 ###Standardsing ICD versions
 icd_grouping <- function(df) {
-  
-  hadm_dates <- hadm %>% select(admittime,hadm_id) %>% distinct(hadm_id,.keep_all = T)
-  df %>% left_join(hadm_dates,by="hadm_id") %>% 
-    mutate(icd_10 = icd_map(icd_code,from=9,to=10),
-           icd_10 = case_when(icd_10=="" ~icd_code, TRUE~icd_10),
-           icd_group = substring(icd_10,1,1))
-  
+  hadm_dates <- hadm %>%
+    select(admittime, hadm_id) %>%
+    distinct(hadm_id, .keep_all = T)
+  df %>%
+    left_join(hadm_dates, by = "hadm_id") %>%
+    mutate(
+      icd_10 = icd_map(icd_code, from = 9, to = 10),
+      icd_10 = case_when(icd_10 == "" ~ icd_code, TRUE ~ icd_10),
+      icd_group = substring(icd_10, 1, 1)
+    )
 }
 
 ##Data upload (CSV files accessible at https://physionet.org/content/mimiciv/2.2/)
@@ -1273,23 +2049,23 @@ poe <- read_csv("poe.csv") #Care events
 ##Initial cleaning of raw datasets
 
 ###Identifying antimicrobial agents in prescription data
-drugs <- MIMER::clean_antibiotics(drugs,drug_col=drug)
-write_csv(drugs,"drugs_clean.csv")
+drugs <- MIMER::clean_antibiotics(drugs, drug_col = drug)
+write_csv(drugs, "drugs_clean.csv")
 
 ###Stadardising ICD codes
 diagnoses <- icd_grouping(diagnoses)
-write_csv(diagnoses,"diagnoses_clean.csv")
+write_csv(diagnoses, "diagnoses_clean.csv")
 procedures <- icd_grouping(procedures)
-write_csv(procedures,"procedures_clean.csv")
+write_csv(procedures, "procedures_clean.csv")
 
 ###Linking care events to codes
-poekey <- poedetail %>% select(poe_id,field_value)
-poe <- left_join(poe,poekey,by="poe_id")
-poe <- poe %>% select(subject_id,ordertime,order_subtype,field_value)
-write_csv(poe,"poe_clean.csv")
+poekey <- poedetail %>% select(poe_id, field_value)
+poe <- left_join(poe, poekey, by = "poe_id")
+poe <- poe %>% select(subject_id, ordertime, order_subtype, field_value)
+write_csv(poe, "poe_clean.csv")
 
 ###Transposing microbiology AST results to columns
-micro <- micro_clean(path_to_data,"microbiologyevents.csv")
+micro <- micro_clean(path_to_data, "microbiologyevents.csv")
 
 ##Managing missing antimicrobial susceptibiity data
 
@@ -1297,60 +2073,83 @@ micro <- micro_clean(path_to_data,"microbiologyevents.csv")
 micro <- intr_mic(micro)
 
 ###Populating expected susceptible phenotypes
-missings <- data.frame(matrix(ncol=2,nrow=0)) 
-micro <- micro %>% 
-  COL_simul() %>% 
-  ETP_simul() %>% 
-  CRO_simul() %>% 
-  CIP_simul() %>% 
-  SPT_simul() %>% 
-  VAN_simul() %>% 
-  DAP_simul() %>% 
-  LNZ_simul() %>% 
-  PEN_simul() %>% 
-  AMP_simul() %>% 
-  TEC_simul() %>% 
-  mutate(RIF=case_when(org_fullname=="Streptococcus pneumoniae" ~ "S",
-                       TRUE ~ RIF)) %>% 
-  TGC_simul() %>% 
+missings <- data.frame(matrix(ncol = 2, nrow = 0))
+micro <- micro %>%
+  COL_simul() %>%
+  ETP_simul() %>%
+  CRO_simul() %>%
+  CIP_simul() %>%
+  SPT_simul() %>%
+  VAN_simul() %>%
+  DAP_simul() %>%
+  LNZ_simul() %>%
+  PEN_simul() %>%
+  AMP_simul() %>%
+  TEC_simul() %>%
+  mutate(
+    RIF = case_when(
+      org_fullname == "Streptococcus pneumoniae" ~ "S",
+      TRUE ~ RIF
+    )
+  ) %>%
+  TGC_simul() %>%
   QDA_simul()
 urines <- micro %>% filter(grepl('URINE', spec_type_desc))
 pos_urines <- urines %>% filter(!is.na(org_name))
-write_csv(pos_urines,"raw_pos_urines.csv")
-write_csv(micro,"micro_clean2.csv")
+write_csv(pos_urines, "raw_pos_urines.csv")
+write_csv(micro, "micro_clean2.csv")
 
 urine_dsr <- read_csv("raw_pos_urines.csv")
 micro <- read_csv("micro_clean2.csv")
-blood_dsr <- micro %>% filter(grepl("Blood Culture",test_name))
-labels <- read_csv("d_icd_with_labels_ah.csv")
+blood_dsr <- micro %>% filter(grepl("Blood Culture", test_name))
+labels <- read_csv("DSR_outcome_labels.csv")
 hadm <- read_csv("admissions.csv")
 d_icd_diagnoses <- read_csv("d_icd_diagnoses.csv")
 diagnoses_raw <- read_csv("diagnoses_icd.csv")
-diag_key <- diagnoses_raw %>% select(hadm_id,icd_code,icd_version)
-label_key <- labels %>% select(icd_code,icd_version,complicated_vs_uncomplicated_uti,uti_vs_not_uti)
+diag_key <- diagnoses_raw %>% select(hadm_id, icd_code, icd_version)
+label_key <- labels %>%
+  select(
+    icd_code,
+    icd_version,
+    complicated_vs_uncomplicated_uti,
+    uti_vs_not_uti
+  )
 dl_key <- diag_key %>% left_join(label_key)
-dl_key <- dl_key %>% mutate(complicated_vs_uncomplicated_uti = case_when(
-  is.na(complicated_vs_uncomplicated_uti) ~ 0, TRUE ~ complicated_vs_uncomplicated_uti
-),
-uti_vs_not_uti = case_when(
-  is.na(uti_vs_not_uti) ~ 0, TRUE ~ uti_vs_not_uti
-))
-dl_key <- dl_key %>% group_by(hadm_id) %>% mutate(complicated_vs_uncomplicated_uti = 
-                                                    max(complicated_vs_uncomplicated_uti),
-                                                  uti_vs_not_uti = max(uti_vs_not_uti)) %>% 
+dl_key <- dl_key %>%
+  mutate(
+    complicated_vs_uncomplicated_uti = case_when(
+      is.na(complicated_vs_uncomplicated_uti) ~ 0,
+      TRUE ~ complicated_vs_uncomplicated_uti
+    ),
+    uti_vs_not_uti = case_when(
+      is.na(uti_vs_not_uti) ~ 0,
+      TRUE ~ uti_vs_not_uti
+    )
+  )
+dl_key <- dl_key %>%
+  group_by(hadm_id) %>%
+  mutate(
+    complicated_vs_uncomplicated_uti = max(complicated_vs_uncomplicated_uti),
+    uti_vs_not_uti = max(uti_vs_not_uti)
+  ) %>%
   ungroup()
-dl_key <- dl_key %>% distinct(hadm_id,.keep_all = T)
+dl_key <- dl_key %>% distinct(hadm_id, .keep_all = T)
 
-blood_dsr <- blood_dsr %>% left_join(dl_key,by="hadm_id")
-urine_dsr <- urine_dsr %>% left_join(dl_key,by="hadm_id")
+blood_dsr <- blood_dsr %>% left_join(dl_key, by = "hadm_id")
+urine_dsr <- urine_dsr %>% left_join(dl_key, by = "hadm_id")
 
 comp_fill <- function(df) {
-  
-  df %>% mutate(complicated_vs_uncomplicated_uti = case_when(
-    is.na(complicated_vs_uncomplicated_uti) ~ 0, TRUE ~complicated_vs_uncomplicated_uti),
-    uti_vs_not_uti = case_when(is.na(uti_vs_not_uti) ~ 0, TRUE ~ uti_vs_not_uti)
-  )
-  
+  df %>%
+    mutate(
+      complicated_vs_uncomplicated_uti = case_when(
+        is.na(complicated_vs_uncomplicated_uti) ~ 0,
+        TRUE ~ complicated_vs_uncomplicated_uti
+      ),
+      uti_vs_not_uti = case_when(
+        is.na(uti_vs_not_uti) ~ 0,
+        TRUE ~ uti_vs_not_uti
+      )
+    )
 }
 blood_dsr <- blood_dsr %>% comp_fill()
 urine_dsr <- urine_dsr %>% comp_fill()
@@ -1358,26 +2157,22 @@ urine_dsr <- urine_dsr %>% comp_fill()
 blood_dsr <- blood_dsr %>% select(-complicated_vs_uncomplicated_uti)
 urine_dsr <- urine_dsr %>% select(-uti_vs_not_uti)
 
-write_csv(blood_dsr,"blood_pre_features.csv")
-write_csv(urine_dsr,"urine_pre_features.csv")
+write_csv(blood_dsr, "blood_pre_features.csv")
+write_csv(urine_dsr, "urine_pre_features.csv")
 
 #Population characteristics
-count_outcomes <- function(df,outcome) {
-  
+count_outcomes <- function(df, outcome) {
   outcome <- enquo(outcome)
 
-compcount <- df %>% count(!!outcome) %>% 
-  mutate(!!outcome := 
-           factor(!!outcome,levels=c("0","1")))
+  compcount <- df %>%
+    count(!!outcome) %>%
+    mutate(!!outcome := factor(!!outcome, levels = c("0", "1")))
 
-ggplot(compcount,aes(y=n,x=!!outcome,fill=!!outcome)) +
-  geom_col() +
-  theme(legend.position = "none") +
-  coord_flip()
-
+  ggplot(compcount, aes(y = n, x = !!outcome, fill = !!outcome)) +
+    geom_col() +
+    theme(legend.position = "none") +
+    coord_flip()
 }
 
 urine_dsr %>% count_outcomes(complicated_vs_uncomplicated_uti)
 blood_dsr %>% count_outcomes(uti_vs_not_uti)
-
-
