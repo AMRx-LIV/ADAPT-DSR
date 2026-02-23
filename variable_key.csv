@@ -1,0 +1,38 @@
+﻿Long_name,Short_name
+adm_loc_EMERGENCY ROOM,ED admission
+pAMPCs,Prev ampicillin S
+Platelet Count,Platelet count
+Creatinine,Creatinine
+anchor_age,Age
+Albumin,Albumin
+Red Blood Cells,Red Blood Cells
+Hematocrit,Hematocrit
+pDIAG_H,Prev ICD H
+Potassium,Potassium
+curr_service_MED,MED admission
+arrival_transport_AMBULANCE,Ambulance arrival
+RDW,RBC width
+adm_loc_PHYSICIAN REFERRAL,Physician-referred
+pc_dyspnea,Dyspnoea
+Sodium,Sodium
+pAMPr,Prev ampicillin R
+curr_service_CSURG,CSURG admission
+curr_service_NMED,NMED admission
+pDIAG_Z,Prev ICD Z
+pOverweight,Overweight
+pDIAG_D,Previous ICD D
+pCLIs,Prev clindamycin R
+pObese,Obese
+PTT,PTT
+pRestr,Prev restraints
+pDIAG_L,Previous ICD L
+White Blood Cells,WBCs
+Bicarbonate,Bicarbonate
+Alkaline Phosphatase,Alk Phos
+curr_service_SURG,SURG admission
+temperature,Temperature
+pCATH,Prev catheter
+Platelet Count,Platelets
+heartrate,Heart rate
+Monocytes,Monocytes
+Insulin Response Enhancers - Biguanides,On biguanide
